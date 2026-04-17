@@ -333,6 +333,7 @@
           <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
             <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
             <button class="btn btn-edit" id="downloadXlsxBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;background:#315efb;color:#fff;">⬇ XLSX татах</button>
+            <div id="statusBoxBottom" class="status"></div>
           </div>
         </div>
 
@@ -625,6 +626,11 @@
         hero.style.display = "block";
         hero.style.background = ok ? "rgba(15,157,88,.25)" : "rgba(239,68,68,.25)";
         hero.style.borderColor = ok ? "rgba(15,157,88,.5)" : "rgba(239,68,68,.5)";
+      }
+      const bottom = document.getElementById("statusBoxBottom");
+      if (bottom) {
+        bottom.textContent = msg;
+        bottom.className = "status show " + (ok ? "ok" : "err");
       }
     }
 
