@@ -258,9 +258,12 @@
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="hero-actions" style="display:flex;gap:8px;">
-        <button class="btn btn-edit" id="openEditorBtn">✏️ Рубрик засах</button>
-        <button class="btn btn-edit" id="downloadXlsxBtn">⬇ XLSX татах</button>
+      <div class="hero-actions" style="display:flex;gap:8px;align-items:center;">
+        <div id="editorTools" style="display:none;gap:8px;align-items:center;">
+          <button class="btn btn-edit" id="openEditorBtn">✏️ Рубрик засах</button>
+          <button class="btn btn-edit" id="downloadXlsxBtn">⬇ XLSX татах</button>
+        </div>
+        <button class="btn btn-edit" id="toggleToolsBtn" style="font-size:18px;padding:8px 12px;">⚙️</button>
       </div>
       <h1>Онлайн сургалтыг үнэлэх НН шалгуур</h1>
       <p>Онлайн сургалтыг үнэлэх интерактив үнэлгээний хэрэгсэл</p>
@@ -938,6 +941,12 @@
     function closeEditor(){
       document.getElementById("editorOverlay").classList.remove("open");
     }
+
+    document.getElementById("toggleToolsBtn").addEventListener("click", function(){
+      const tools = document.getElementById("editorTools");
+      const visible = tools.style.display === "flex";
+      tools.style.display = visible ? "none" : "flex";
+    });
 
     document.getElementById("openEditorBtn").addEventListener("click", openEditor);
     document.getElementById("closeEditorBtn").addEventListener("click", closeEditor);
