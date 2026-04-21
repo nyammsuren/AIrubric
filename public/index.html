@@ -156,6 +156,29 @@
     .radar-card{margin-top:24px;padding:20px;}
     .radar-wrap{max-width:780px;margin:0 auto;}
 
+    /* ===== COURSE DROPDOWN ===== */
+    .course-picker{position:relative;}
+    .course-picker input{
+      width:100%;border:none;outline:none;background:transparent;color:#fff;font-size:14px;
+    }
+    .course-picker input::placeholder{color:rgba(255,255,255,.6);}
+    .course-dropdown{
+      display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;
+      background:#fff;border:1px solid #dbe5ff;border-radius:14px;
+      box-shadow:0 8px 24px rgba(15,23,42,.14);z-index:500;
+      max-height:220px;overflow-y:auto;
+    }
+    .course-dropdown.open{display:block;}
+    .course-option{
+      padding:10px 14px;cursor:pointer;font-size:14px;color:#172033;
+      border-bottom:1px solid #f0f4ff;line-height:1.4;
+    }
+    .course-option:last-child{border-bottom:none;}
+    .course-option:hover{background:#f4f7ff;}
+    .course-option .course-code{font-size:12px;color:#64748b;margin-top:2px;}
+    .course-option.loading,.course-option.empty{color:#64748b;cursor:default;}
+    .course-option.loading:hover,.course-option.empty:hover{background:none;}
+
     .evidence-card{padding:18px 20px;}
     .evidence-item{
       border:1px solid #e6ebf3;border-radius:12px;padding:10px 12px;
@@ -282,9 +305,11 @@
           <label>Үнэлгээ хийх багшийн код</label>
           <input id="evaluator" placeholder="Жишээ: Эксперт 1" />
         </div>
-        <div class="field">
-          <label>Canvas course ID</label>
-          <input id="canvasCourseId" placeholder="Жишээ: 12345" />
+        <div class="field course-picker" id="coursePickerWrap">
+          <label>Canvas course</label>
+          <input id="courseSearchInput" placeholder="Хичээл хайх..." autocomplete="off" />
+          <input type="hidden" id="canvasCourseId" />
+          <div class="course-dropdown" id="courseDropdown"></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="btn btn-edit" id="canvasImportBtn">AI үнэлгээ</button>
@@ -1047,7 +1072,7 @@
 
     async function importFromCanvas(){
       const courseId = document.getElementById("canvasCourseId").value.trim();
-      if (!courseId) { showStatus("Canvas course ID оруулна уу.", false); return; }
+      if (!courseId) { showStatus("Canvas course-ийг жагсаалтаас сонгоно уу.", false); return; }
       const evaluator = document.getElementById("evaluator").value.trim();
       try {
         showStatus("Canvas-аас өгөгдөл татаж, AI үнэлгээ хийж байна...", true);
@@ -1100,6 +1125,86 @@
 
     document.getElementById("downloadXlsxBtn").addEventListener("click", downloadXLSX);
     document.getElementById("downloadXlsxBtnBottom").addEventListener("click", downloadXLSX);
+
+    // ===== COURSE PICKER DROPDOWN =====
+    (function(){
+      const searchInput = document.getElementById("courseSearchInput");
+      const hiddenId    = document.getElementById("canvasCourseId");
+      const dropdown    = document.getElementById("courseDropdown");
+      let allCourses    = [];
+      let loaded        = false;
+      let debounceTimer = null;
+
+      function openDropdown(){ dropdown.classList.add("open"); }
+      function closeDropdown(){ dropdown.classList.remove("open"); }
+
+      function renderOptions(courses){
+        if (!courses.length){
+          dropdown.innerHTML = `<div class="course-option empty">Хичээл олдсонгүй</div>`;
+          return;
+        }
+        dropdown.innerHTML = courses.map(c => `
+          <div class="course-option" data-id="${c.id}" data-name="${c.name || c.course_code}">
+            <div>${c.name || c.course_code}</div>
+            <div class="course-code">${c.course_code || ""} · ID: ${c.id}</div>
+          </div>`).join("");
+
+        dropdown.querySelectorAll(".course-option").forEach(el => {
+          el.addEventListener("click", () => {
+            hiddenId.value     = el.dataset.id;
+            searchInput.value  = el.dataset.name;
+            closeDropdown();
+          });
+        });
+      }
+
+      function filterAndRender(query){
+        const q = query.toLowerCase();
+        const filtered = allCourses.filter(c =>
+          (c.name || "").toLowerCase().includes(q) ||
+          (c.course_code || "").toLowerCase().includes(q) ||
+          String(c.id).includes(q)
+        );
+        renderOptions(filtered);
+      }
+
+      async function loadCourses(){
+        dropdown.innerHTML = `<div class="course-option loading">Ачааллаж байна...</div>`;
+        openDropdown();
+        try {
+          const res  = await fetch("/api/canvas/courses");
+          const data = await res.json();
+          if (data.ok && Array.isArray(data.courses)){
+            allCourses = data.courses;
+            loaded = true;
+            renderOptions(allCourses);
+          } else {
+            dropdown.innerHTML = `<div class="course-option empty">Жагсаалт татахад алдаа гарлаа</div>`;
+          }
+        } catch {
+          dropdown.innerHTML = `<div class="course-option empty">Сервертэй холбогдож чадсангүй</div>`;
+        }
+      }
+
+      searchInput.addEventListener("focus", () => {
+        if (!loaded) loadCourses();
+        else { filterAndRender(searchInput.value); openDropdown(); }
+      });
+
+      searchInput.addEventListener("input", () => {
+        hiddenId.value = "";
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          if (!loaded) return;
+          filterAndRender(searchInput.value);
+          openDropdown();
+        }, 180);
+      });
+
+      document.addEventListener("click", e => {
+        if (!document.getElementById("coursePickerWrap").contains(e.target)) closeDropdown();
+      });
+    })();
 
     document.getElementById("canvasImportBtn").addEventListener("click", importFromCanvas);
 
