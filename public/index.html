@@ -327,10 +327,22 @@
       </div>
     </section>
 
+    <section class="card radar-card" style="margin-bottom:24px;">
+      <h3 style="margin:0 0 16px;font-size:22px;">График</h3>
+      <div class="radar-wrap">
+        <canvas id="radarChart" height="120"></canvas>
+      </div>
+    </section>
+
     <section class="layout">
       <div class="criteria" id="criteria"></div>
 
       <aside class="side">
+        <div class="card" style="padding:18px 20px;">
+          <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
+          <div id="statusBoxBottom" class="status"></div>
+        </div>
+
         <div class="card summary">
           <h3>Нэгтгэл</h3>
           <div class="big-score">
@@ -357,24 +369,12 @@
         <div class="card overall-ai">
           <h3 style="margin:0 0 10px;font-size:22px;">Нэгдсэн зөвлөмж</h3>
           <textarea id="overallAiText"
-            style="width:100%;min-height:600px;border:1px solid #e6ebf3;border-radius:16px;
+            style="width:100%;min-height:300px;border:1px solid #e6ebf3;border-radius:16px;
             padding:14px;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
-        </div>
-
-        <div class="card" style="padding:18px 20px;">
-          <div id="evidenceSummaryBox" style="display:none;"></div>
-          <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
-          <div id="statusBoxBottom" class="status"></div>
+          <div id="evidenceSummaryBox" style="display:none;margin-top:14px;"></div>
         </div>
 
       </aside>
-    </section>
-
-    <section class="card radar-card">
-      <h3 style="margin:0 0 16px;font-size:22px;">График</h3>
-      <div class="radar-wrap">
-        <canvas id="radarChart" height="120"></canvas>
-      </div>
     </section>
 
   </div>
@@ -734,11 +734,13 @@
     }
 
     function renderEvidenceSummary(items = []){
+      evidenceSummaryBox.style.display = "block";
       if (!Array.isArray(items) || items.length === 0) {
-        evidenceSummaryBox.innerHTML = `<div class="evidence-item">Нотолгооны товч дүгнэлт олдсонгүй.</div>`;
+        evidenceSummaryBox.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">📋 AI НОТОЛГООНЫ ТОВЧ ДҮГНЭЛТ</div><div class="evidence-item">Нотолгооны товч дүгнэлт олдсонгүй.</div>`;
         return;
       }
-      evidenceSummaryBox.innerHTML = items.map(item => `<div class="evidence-item">${String(item)}</div>`).join("");
+      evidenceSummaryBox.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;padding-top:14px;border-top:1px solid var(--line);">📋 AI НОТОЛГООНЫ ТОВЧ ДҮГНЭЛТ</div>` +
+        items.map(item => `<div class="evidence-item">${String(item)}</div>`).join("");
     }
 
     function renderRadarChart(){
