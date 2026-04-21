@@ -446,10 +446,8 @@
       }
     } catch {}
 
-    // 3. Нэгтгэх: Sheets + memory (давхардлыг courseCode+evalDate-аар шүүнэ)
-    const seen = new Set(sheetEvals.map(e => `${e.courseCode}|${e.evalDate}`));
-    const extra = memEvals.filter(e => !seen.has(`${e.courseCode}|${e.evalDate}`));
-    allEvals = [...extra, ...sheetEvals];
+    // Sheets өгөгдөл байвал тэрийг л ашигла, үгүй бол server memory
+    allEvals = sheetEvals.length > 0 ? sheetEvals : memEvals;
 
     renderStats(allEvals);
     renderTable(allEvals);
