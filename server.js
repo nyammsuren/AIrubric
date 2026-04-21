@@ -11,6 +11,7 @@ app.use(express.json({ limit: "3mb" }));
 app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
@@ -364,6 +365,27 @@ app.post("/api/canvas/analyze-course", async (req, res) => {
   }
 });
 
+// ===== ADMIN AUTH =====
+const adminTokens = new Set();
+
+app.post("/api/admin/login", (req, res) => {
+  const { password } = req.body || {};
+  if (password === ADMIN_PASSWORD) {
+    const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    adminTokens.add(token);
+    res.json({ ok: true, token });
+  } else {
+    res.status(401).json({ ok: false, message: "Нууц үг буруу байна." });
+  }
+});
+
+function requireAdmin(req, res, next) {
+  const auth = req.headers["authorization"] || "";
+  const token = auth.replace("Bearer ", "").trim();
+  if (adminTokens.has(token)) return next();
+  res.status(401).json({ ok: false, message: "Нэвтрэх шаардлагатай." });
+}
+
 // ===== EVALUATIONS STORE =====
 const evaluations = [];
 
@@ -409,7 +431,7 @@ app.post("/api/evaluations", async (req, res) => {
   }
 });
 
-app.get("/api/evaluations", (req, res) => {
+app.get("/api/evaluations", requireAdmin, (req, res) => {
   res.json({ ok: true, evaluations });
 });
 

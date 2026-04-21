@@ -75,10 +75,32 @@
 
     @media(max-width:900px){.stats{grid-template-columns:1fr 1fr}}
     @media(max-width:600px){.stats{grid-template-columns:1fr};.detail-scores{grid-template-columns:1fr 1fr}}
+    /* LOGIN */
+    .login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);display:flex;align-items:center;justify-content:center;z-index:999;}
+    .login-box{background:#fff;border-radius:24px;padding:36px 40px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(10,20,50,.25);text-align:center;}
+    .login-box h2{margin:0 0 6px;font-size:22px}
+    .login-box p{margin:0 0 24px;color:var(--muted);font-size:14px}
+    .login-box input{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px;outline:none;margin-bottom:12px;}
+    .login-box input:focus{border-color:var(--primary)}
+    .login-box button{width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;}
+    .login-box button:hover{background:#2242bb}
+    .login-err{color:#ef4444;font-size:13px;margin-top:8px;display:none}
   </style>
 </head>
 <body>
-<div class="wrap">
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🔐 Админ нэвтрэх</h2>
+    <p>Дашбоард харахын тулд нэвтэрнэ үү</p>
+    <input type="password" id="pwInput" placeholder="Нууц үг" />
+    <button id="loginBtn">Нэвтрэх</button>
+    <div class="login-err" id="loginErr">Нууц үг буруу байна.</div>
+  </div>
+</div>
+
+<div class="wrap" id="mainContent" style="display:none">
   <div class="hero">
     <div>
       <h1>Үнэлгээний дашбоард</h1>
@@ -157,6 +179,41 @@
 
 <script>
   let allEvals = [];
+  let adminToken = localStorage.getItem("adminToken") || "";
+
+  // AUTH
+  async function tryLogin() {
+    const pw = document.getElementById("pwInput").value;
+    const err = document.getElementById("loginErr");
+    err.style.display = "none";
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        adminToken = data.token;
+        localStorage.setItem("adminToken", adminToken);
+        showDashboard();
+      } else {
+        err.style.display = "block";
+      }
+    } catch {
+      err.textContent = "Серверт холбогдож чадсангүй.";
+      err.style.display = "block";
+    }
+  }
+
+  document.getElementById("loginBtn").addEventListener("click", tryLogin);
+  document.getElementById("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+
+  function showDashboard() {
+    document.getElementById("loginOverlay").style.display = "none";
+    document.getElementById("mainContent").style.display = "block";
+    load();
+  }
 
   function qualityBadge(percent) {
     if (percent >= 90) return '<span class="badge badge-green">Жишиг хичээл</span>';
@@ -284,7 +341,15 @@
 
   async function load() {
     try {
-      const res = await fetch("/api/evaluations");
+      const res = await fetch("/api/evaluations", {
+        headers: { "Authorization": `Bearer ${adminToken}` }
+      });
+      if (res.status === 401) {
+        localStorage.removeItem("adminToken");
+        document.getElementById("loginOverlay").style.display = "flex";
+        document.getElementById("mainContent").style.display = "none";
+        return;
+      }
       const data = await res.json();
       if (data.ok) {
         allEvals = data.evaluations;
@@ -297,7 +362,10 @@
     }
   }
 
-  load();
+  // Хэрэв token байвал шууд dashboard харуулах
+  if (adminToken) {
+    showDashboard();
+  }
 </script>
 </body>
 </html>
