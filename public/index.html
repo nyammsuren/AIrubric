@@ -155,7 +155,8 @@
     .status.ok{color:#0f9d58;background:#eefcf4;border-color:#c9efd7}
     .status.err{color:#b42318;background:#fff4f2;border-color:#f6d0ca}
 
-    .radar-mini canvas{width:100%!important;height:auto!important}
+    .radar-mini{height:180px;position:relative;}
+    .radar-mini canvas{position:absolute;inset:0;}
 
     /* ===== COURSE DROPDOWN ===== */
     .course-picker{position:relative;}
@@ -288,7 +289,7 @@
         </div>
         <button class="btn btn-edit" id="toggleToolsBtn" style="font-size:18px;padding:8px 12px;">⚙️</button>
       </div>
-      <div style="position:absolute;top:24px;left:24px;">
+      <div id="dashboardLink" style="position:absolute;top:24px;left:24px;display:none;">
         <a href="/dashboard.html" style="color:rgba(255,255,255,.85);font-size:13px;text-decoration:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:6px 12px;border-radius:10px;">📊 Дашбоард</a>
       </div>
       <h1>Онлайн сургалтыг үнэлэх НН шалгуур</h1>
@@ -364,7 +365,7 @@
           </div>
         </div>
 
-        <div class="card overall-ai">
+        <div class="card overall-ai" id="overallAiCard" style="display:none;">
           <h3 style="margin:0 0 10px;font-size:22px;">Нэгдсэн зөвлөмж</h3>
           <textarea id="overallAiText"
             style="width:100%;min-height:300px;border:1px solid #e6ebf3;border-radius:16px;
@@ -414,9 +415,11 @@
           if (data.ok) {
             const mode = new URLSearchParams(window.location.search).get("mode");
             document.querySelector(".hero-actions").style.display = "block";
+            document.getElementById("dashboardLink").style.display = "block";
             document.getElementById("canvasImportWrap").style.display = "block";
             document.getElementById("instancePickerWrap").style.display = "block";
             document.getElementById("coursePickerWrap").style.display = "block";
+            document.getElementById("overallAiCard").style.display = "block";
 
             // Submit товч → sidebar дээш
             const side = document.querySelector(".side");
@@ -779,7 +782,7 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { display: false },
             tooltip: { callbacks: { label: ctx => `${ctx.raw}/${maxScore}` } }
