@@ -403,9 +403,23 @@
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", async function () {
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("evalDate").value = today;
+
+      // URL-д adminToken байвал серверт шалгаж editor харуулах
+      const urlToken = new URLSearchParams(window.location.search).get("adminToken");
+      if (urlToken) {
+        try {
+          const res = await fetch("/api/admin/verify", {
+            headers: { "Authorization": `Bearer ${urlToken}` }
+          });
+          const data = await res.json();
+          if (data.ok) {
+            document.querySelector(".hero-actions").style.display = "block";
+          }
+        } catch {}
+      }
     });
 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycldPQYZbM5XMzklqLuHGl-fXdwOC0cOZmretZCHchG7UBZrxgNgUOpyUl_KKfTQBC/exec";

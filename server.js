@@ -368,6 +368,12 @@ app.post("/api/canvas/analyze-course", async (req, res) => {
 // ===== ADMIN AUTH =====
 const adminTokens = new Set();
 
+app.get("/api/admin/verify", (req, res) => {
+  const auth = req.headers["authorization"] || "";
+  const token = auth.replace("Bearer ", "").trim();
+  res.json({ ok: adminTokens.has(token) });
+});
+
 app.post("/api/admin/login", (req, res) => {
   const { password } = req.body || {};
   if ((password || "").trim() === ADMIN_PASSWORD.trim()) {

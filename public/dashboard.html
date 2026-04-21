@@ -111,7 +111,10 @@
       <h1>Үнэлгээний дашбоард</h1>
       <p>Бүх хичээлийн үнэлгээний нэгтгэл</p>
     </div>
-    <a href="/" class="btn btn-white">← Үнэлгээ хийх</a>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-white" id="editRubricBtn">✏️ Рубрик засах</button>
+      <a href="/" class="btn btn-white">← Үнэлгээ хийх</a>
+    </div>
   </div>
 
   <div class="stats">
@@ -370,6 +373,10 @@
       document.getElementById("emptyState").textContent = "Серверт холбогдож чадсангүй.";
     }
   }
+
+  document.getElementById("editRubricBtn").addEventListener("click", () => {
+    window.open(`/?adminToken=${adminToken}`, "_blank");
+  });
 
   // Хэрэв token байвал шууд dashboard харуулах
   if (adminToken) {
