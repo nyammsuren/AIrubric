@@ -96,10 +96,7 @@
   <div class="login-box">
     <h2>🔐 Админ нэвтрэх</h2>
     <p>Дашбоард харахын тулд нэвтэрнэ үү</p>
-    <div class="login-pw-wrap">
-      <input type="password" id="pwInput" placeholder="Нууц үг" />
-      <button class="login-pw-eye" id="pwEye" tabindex="-1">👁</button>
-    </div>
+    <input type="password" id="pwInput" placeholder="Нууц үг" />
     <button id="loginBtn">Нэвтрэх</button>
     <div class="login-err" id="loginErr">Нууц үг буруу байна.</div>
   </div>
@@ -216,10 +213,6 @@
 
   document.getElementById("loginBtn").addEventListener("click", tryLogin);
   document.getElementById("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
-  document.getElementById("pwEye").addEventListener("click", () => {
-    const input = document.getElementById("pwInput");
-    input.type = input.type === "password" ? "text" : "password";
-  });
 
   function showDashboard() {
     document.getElementById("loginOverlay").style.display = "none";
