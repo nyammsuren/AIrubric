@@ -14,12 +14,12 @@ const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-// Load Canvas instances from CANVAS_N_NAME / CANVAS_N_URL / CANVAS_N_TOKEN
+// Load Canvas instances — supports both CANVAS_1_NAME and CANVAS1_NAME formats
 const CANVAS_INSTANCES = [];
 for (let i = 1; ; i++) {
-  const name  = process.env[`CANVAS_${i}_NAME`];
-  const url   = (process.env[`CANVAS_${i}_URL`] || "").replace(/\/$/, "");
-  const token = process.env[`CANVAS_${i}_TOKEN`];
+  const name  = process.env[`CANVAS_${i}_NAME`]  || process.env[`CANVAS${i}_NAME`];
+  const url   = (process.env[`CANVAS_${i}_URL`]  || process.env[`CANVAS${i}_URL`]  || "").replace(/\/$/, "");
+  const token = process.env[`CANVAS_${i}_TOKEN`] || process.env[`CANVAS${i}_TOKEN`];
   if (!name && !url && !token) break;
   if (name && url && token) CANVAS_INSTANCES.push({ key: `canvas${i}`, name, url, token });
 }
