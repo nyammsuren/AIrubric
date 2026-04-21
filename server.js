@@ -370,7 +370,7 @@ const adminTokens = new Set();
 
 app.post("/api/admin/login", (req, res) => {
   const { password } = req.body || {};
-  if (password === ADMIN_PASSWORD) {
+  if ((password || "").trim() === ADMIN_PASSWORD.trim()) {
     const token = Math.random().toString(36).slice(2) + Date.now().toString(36);
     adminTokens.add(token);
     res.json({ ok: true, token });
