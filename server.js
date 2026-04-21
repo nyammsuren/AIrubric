@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
 dotenv.config();
 
@@ -14,8 +14,8 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
 const GOOGLE_SCRIPT_URL = (process.env.GOOGLE_SCRIPT_URL || "").replace(/\/$/, "");
 const GOOGLE_SHEET_KEY = process.env.GOOGLE_SHEET_KEY || "";
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
 
 // Load Canvas instances — supports both CANVAS_1_NAME and CANVAS1_NAME formats
 const CANVAS_INSTANCES = [];
@@ -30,8 +30,8 @@ for (let i = 1; ; i++) {
 if (CANVAS_INSTANCES.length === 0) {
   console.warn("No Canvas instances configured. Set CANVAS_1_NAME, CANVAS_1_URL, CANVAS_1_TOKEN in .env");
 }
-if (!OPENAI_API_KEY) {
-  console.warn("Missing OPENAI_API_KEY");
+if (!ANTHROPIC_API_KEY) {
+  console.warn("Missing ANTHROPIC_API_KEY");
 }
 
 function getInstance(key) {
@@ -39,7 +39,7 @@ function getInstance(key) {
   return CANVAS_INSTANCES.find(c => c.key === key) || CANVAS_INSTANCES[0] || null;
 }
 
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 const DEFAULT_RUBRIC_MAP = {
   "C1.1": "CLO-ийн тодорхой байдал",
@@ -141,7 +141,19 @@ async function getCourseBundle(instance, courseId) {
     }
   }
 
-  return { course, modules, assignments, discussions, pages };
+  const discussionsWithEntries = await Promise.all(
+    discussions.slice(0, 20).map(async d => {
+      try {
+        const entries = await canvasGet(instance, `/api/v1/courses/${courseId}/discussion_topics/${d.id}/entries`, { per_page: 100 });
+        const participantIds = new Set(entries.map(e => e.user_id).filter(Boolean));
+        return { ...d, entryCount: entries.length, participantCount: participantIds.size };
+      } catch {
+        return { ...d, entryCount: 0, participantCount: 0 };
+      }
+    })
+  );
+
+  return { course, modules, assignments, discussions: discussionsWithEntries, pages };
 }
 
 function buildEvidenceText(bundle) {
@@ -171,7 +183,8 @@ function buildEvidenceText(bundle) {
   const discussionPart = bundle.discussions.map((d, i) => [
     `DISCUSSION ${i + 1}: ${d.title || ""}`,
     `MESSAGE: ${stripHtml(d.message || "")}`,
-    `POINTS: ${d.points_possible ?? ""}`
+    `POINTS: ${d.points_possible ?? ""}`,
+    `ENTRIES: ${d.entryCount ?? 0} (PARTICIPANTS: ${d.participantCount ?? 0})`
   ].join("\n")).join("\n\n");
 
   return truncateText([
@@ -203,85 +216,87 @@ async function scoreWithAI(evidenceText, rubricMap = DEFAULT_RUBRIC_MAP) {
     .join("\n");
 
   const prompt = `
-Та бол онлайн хичээлийн чанарын мэргэжлийн үнэлгээч. Canvas course-ийн өгөгдөлд үндэслэн 24 үзүүлэлт бүрт 0–3 оноо өг.
+Та бол онлайн хичээлийн чанарын мэргэжлийн үнэлгээч. Canvas LMS-ийн өгөгдөлд үндэслэн 24 үзүүлэлт бүрт 0–3 оноо өг.
 
-## ОНОО ӨГӨХ НАРИЙН ШАЛГУУР
+## ОНОО ӨГӨХ ШАЛГУУР
 
-**3 оноо** — Тодорхой, баталгаажсан нотолгоо байгаа. Хэд хэдэн жишээ ажиглагдсан. Системтэй, тогтмол хэрэгжсэн.
-**2 оноо** — Нотолгоо байгаа боловч бүрэн бус. 1-2 жишээ байна. Зарим хэсэгт хангалттай, зарим хэсэгт дутуу.
-**1 оноо** — Сул буюу ганц нэг нотолгоо байна. Санаачилга байгаа ч хэрэгжилт хангалтгүй.
-**0 оноо** — Нотолгоо байхгүй эсвэл огт ажиглагдаагүй.
+**3** — Тодорхой, олон нотолгоо байна. Системтэй, тогтмол хэрэгжсэн.
+**2** — Нотолгоо байгаа ч бүрэн бус. 1-2 жишээ байна.
+**1** — Ганц нэг нотолгоо байна. Хэрэгжилт хангалтгүй.
+**0** — Нотолгоо байхгүй.
 
-## ЧУХАЛ ДҮРЭМ
+## ҮЗҮҮЛЭЛТ ТУСБҮРИЙН ЮУ ХАРАХ ВЭ
 
-- Зөвхөн өгөгдөлд байгаа нотолгоонд тулгуурла. Таамаглал бүү хий.
-- Мэдээлэл дутуу бол заавал 0 эсвэл 1 өг — 2 эсвэл 3 өгөхийн тулд тодорхой нотолгоо шаардлагатай.
-- "reasons" талбарт яагаад тийм оноо өгснийг 1-2 өгүүлбэрээр Монголоор тайлбарла. Өгөгдөлд байгаа тодорхой зүйлийг дурдаж, юу дутуу байгааг хэл.
-- "overallAdvice" талбарт: нийт дүгнэлт → хамгийн сул 3 үзүүлэлт → тус бүрд нь тодорхой, хийж болох алхам. Монголоор, мэргэжлийн, практик байлга.
-- "evidenceSummary" талбарт өгөгдөлд байгаа бодит нотолгоог (модулийн нэр, даалгаврын нэр, тоо гэх мэт) жагсаа.
+**C1.1** — Syllabus-т суралцагч юу чадах болохыг тодорхойлсон CLO байгаа эсэх; Bloom-ийн үйл үг (шинжлэх, үнэлэх гэх мэт) ашигласан эсэх
+**C1.2** — Module нэрс, агуулгын гарчиг нь CLO-тэй уялдаж байгаа эсэх
+**C1.3** — Assignment, discussion-ийн тайлбарт CLO-г дурдсан эсэх; даалгавар нь зорилготой холбогдсон эсэх
+**C1.4** — Assignment-ийн оноо, тоо нь CLO тооцоотой тохирч байгаа эсэх
+**C2.1** — Syllabus, page-д эрдэм шинжилгээний эх сурвалж, онол, загварыг дурдсан эсэх
+**C2.2** — Assignment, page тайлбарт ном, нийтлэл, холбоос байгаа тоо
+**C2.3** — Page-ийн агуулга зөвхөн жагсаалт биш, тайлбар, дүн шинжилгээ байгаа эсэх
+**C2.4** — Assignment-д бодит байдлын сценари, кейс, практик даалгавар байгаа эсэх
+**C3.1** — Module тоо (3-аас дээш), модуль бүрт item байгаа эсэх, дараалал логиктой эсэх
+**C3.2** — Module бүрийн item тоо тэнцвэртэй эсэх (хэт олон буюу 15-аас дээш бол ачаалал өндөр)
+**C3.3** — Page-д зураг, видео, жагсаалт зэрэг олон форматыг ашигласан эсэх
+**C3.4** — Ижил module дотор assignment, page, discussion хоорондын логик уялдаа байгаа эсэх
+**C4.1** — Assignment-д дүн шинжилгээ, нэгтгэл, бүтээлч ажил (зөвхөн test биш) байгаа эсэх
+**C4.2** — Discussion-ийн оролцогчдын тоо (PARTICIPANTS талбар); 30%-иас дээш оролцоотой бол сайн
+**C4.3** — Discussion тайлбарт багшийн зааварчилгаа, хариу өгөх амлалт байгаа эсэх
+**C4.4** — Discussion тоо болон ENTRIES тоо; forum тус бүрийн идэвхийн түвшин
+**C5.1** — Assignment тоо (5-аас дээш), due date хичээлийн туршид тархсан эсэх
+**C5.2** — Rubric, оноо, шалгуур assignment тайлбарт тодорхой заасан эсэх
+**C5.3** — Assignment тайлбарт feedback, коммент, хариу өгөх талаар дурдсан эсэх
+**C5.4** — Assignment тайлбарт "peer review", "өөрийн үнэлгээ", "чацуутны үнэлгээ" гэж байгаа эсэх
+**C6.1** — Module бүр нэртэй, item-үүд ангилагдсан, навигаци тодорхой эсэх
+**C6.2** — Item нэрс тодорхой, дарааллын дугаар эсвэл логик нэршил байгаа эсэх
+**C6.3** — Assignment, page-д гадаад хэрэгсэл, видео, интерактив контентыг нэгтгэсэн эсэх
+**C6.4** — Page-ийн агуулгад альтернатив текст, хялбар хэл, хүртээмжийн тэмдэглэл байгаа эсэх
+
+## ДҮРЭМ
+
+- Зөвхөн CANVAS ӨГӨГДӨЛ хэсэгт байгаа нотолгоонд тулгуурла. Таамаглал бүү хий.
+- Мэдээлэл байхгүй бол 0 өг — 2 эсвэл 3 өгөхийн тулд тодорхой нотолгоо шаардлагатай.
+- "reasons" талбарт өгөгдөлд байгаа тодорхой зүйлийг (module нэр, assignment нэр, тоо гэх мэт) дурдан 1-2 өгүүлбэрээр Монголоор тайлбарла.
+- "overallAdvice" талбарт: нийт дүгнэлт → хамгийн сул 3 үзүүлэлт → тус бүрд тодорхой, хийж болох алхам. Монголоор, практик байлга.
+- "evidenceSummary" талбарт өгөгдөлд байгаа бодит тоо, нэрсийг жагсаа (модулийн тоо, даалгаврын тоо, хэлэлцүүлгийн оролцогчдын тоо гэх мэт).
 - Хариуг ЗӨВХӨН JSON хэлбэрээр буцаа. Markdown fence (\`\`\`) бүү ашигла.
 
 ## РУБРИК
 ${rubricList}
 
-## ХАРИУНЫ ЗАГВАР
+## ХАРИУНЫ ФОРМАТ (утга бүрийг өгөгдөлд тулгуурлан бөглө)
 {
   "aiScores": {
-    "C1.1": 2, "C1.2": 1, "C1.3": 2, "C1.4": 2,
-    "C2.1": 1, "C2.2": 1, "C2.3": 2, "C2.4": 2,
-    "C3.1": 1, "C3.2": 0, "C3.3": 1, "C3.4": 1,
-    "C4.1": 2, "C4.2": 2, "C4.3": 1, "C4.4": 0,
-    "C5.1": 2, "C5.2": 2, "C5.3": 2, "C5.4": 2,
-    "C6.1": 2, "C6.2": 2, "C6.3": 2, "C6.4": 1
+    "C1.1": <0-3>, "C1.2": <0-3>, "C1.3": <0-3>, "C1.4": <0-3>,
+    "C2.1": <0-3>, "C2.2": <0-3>, "C2.3": <0-3>, "C2.4": <0-3>,
+    "C3.1": <0-3>, "C3.2": <0-3>, "C3.3": <0-3>, "C3.4": <0-3>,
+    "C4.1": <0-3>, "C4.2": <0-3>, "C4.3": <0-3>, "C4.4": <0-3>,
+    "C5.1": <0-3>, "C5.2": <0-3>, "C5.3": <0-3>, "C5.4": <0-3>,
+    "C6.1": <0-3>, "C6.2": <0-3>, "C6.3": <0-3>, "C6.4": <0-3>
   },
   "reasons": {
-    "C1.1": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C1.2": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C1.3": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C1.4": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C2.1": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C2.2": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C2.3": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C2.4": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C3.1": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C3.2": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C3.3": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C3.4": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C4.1": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C4.2": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C4.3": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C4.4": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C5.1": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C5.2": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C5.3": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C5.4": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C6.1": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C6.2": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C6.3": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла.",
-    "C6.4": "Яагаад тийм оноо өгснөө 1-2 өгүүлбэрээр тайлбарла."
+    "C1.1": "Энэ хичээлийн өгөгдөлд юу олдсон, юу дутуу байсан тухай тайлбар.",
+    ...
   },
-  "overallAdvice": "Хичээл дунд түвшинд үнэлэгдлээ. Хамгийн анхаарал татсан асуудлууд:\n1. CLO-ийн тодорхой байдал — Блумийн шаталсан үйл үгийг ашиглан дахин томьёол.\n2. Явцын үнэлгээ — Бүлэг бүрт нэг богино сорил нэм.\n3. Эргэх холбоо — Даалгаврын дараа 72 цагийн дотор тайлбар бүхий хариу өг.",
-  "evidenceSummary": [
-    "7 модуль бүртгэгдсэн, модуль бүрт 3-5 контент байна.",
-    "12 даалгавар олдсон, дундаж 20 оноотой.",
-    "Хэлэлцүүлгийн форум 4 байна, оролцооны шаардлага тодорхойгүй."
-  ]
+  "overallAdvice": "Нийт дүгнэлт ба хамгийн сул 3 үзүүлэлтийг сайжруулах тодорхой алхмууд.",
+  "evidenceSummary": ["Өгөгдөлд байгаа бодит нотолгоо 1", "Нотолгоо 2", "Нотолгоо 3"]
 }
 
 ## CANVAS ӨГӨГДӨЛ
 ${evidenceText}
 `;
 
-  const response = await openai.responses.create({
-    model: OPENAI_MODEL,
-    input: prompt,
-    temperature: 0
+  const response = await anthropic.messages.create({
+    model: ANTHROPIC_MODEL,
+    max_tokens: 4096,
+    temperature: 0,
+    messages: [{ role: "user", content: prompt }]
   });
 
-  let text = (response.output_text || "").trim();
+  let text = (response.content?.[0]?.text || "").trim();
 
   if (!text) {
-    throw new Error("OpenAI хоосон хариу өглөө.");
+    throw new Error("Claude хоосон хариу өглөө.");
   }
 
   // markdown code fence арилгана
@@ -354,6 +369,7 @@ app.post("/api/canvas/analyze-course", async (req, res) => {
     res.json({
       ok: true,
       courseId: bundle.course.id,
+      courseCode: bundle.course.course_code || "",
       courseTitle: bundle.course.name || bundle.course.course_code || "",
       aiScores: ai.aiScores,
       reasons: ai.reasons,
