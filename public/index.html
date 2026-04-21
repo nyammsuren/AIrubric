@@ -399,12 +399,12 @@
       const today = new Date().toISOString().split("T")[0];
       document.getElementById("evalDate").value = today;
 
-      // URL-д adminToken байвал серверт шалгаж editor харуулах
-      const urlToken = new URLSearchParams(window.location.search).get("adminToken");
-      if (urlToken) {
+      // sessionStorage-аас adminToken авч шалгах
+      const adminToken = sessionStorage.getItem("adminToken") || "";
+      if (adminToken) {
         try {
           const res = await fetch("/api/admin/verify", {
-            headers: { "Authorization": `Bearer ${urlToken}` }
+            headers: { "Authorization": `Bearer ${adminToken}` }
           });
           const data = await res.json();
           if (data.ok) {

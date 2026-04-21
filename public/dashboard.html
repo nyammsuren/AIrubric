@@ -371,12 +371,20 @@
     }
   }
 
-  document.getElementById("editRubricBtn").addEventListener("click", () => {
-    window.open(`/?adminToken=${adminToken}&mode=rubric`, "_blank");
-  });
-  document.getElementById("aiEvalBtn").addEventListener("click", () => {
-    window.open(`/?adminToken=${adminToken}&mode=ai`, "_blank");
-  });
+  function openAdminPage(mode) {
+    const w = window.open(`/?mode=${mode}`, "_blank");
+    // Token-ийг шинэ tab нээгдсэний дараа sessionStorage-д дамжуулна
+    const timer = setInterval(() => {
+      try {
+        w.sessionStorage.setItem("adminToken", adminToken);
+        clearInterval(timer);
+      } catch {}
+    }, 50);
+    setTimeout(() => clearInterval(timer), 3000);
+  }
+
+  document.getElementById("editRubricBtn").addEventListener("click", () => openAdminPage("rubric"));
+  document.getElementById("aiEvalBtn").addEventListener("click", () => openAdminPage("ai"));
 
   // Хэрэв token байвал шууд dashboard харуулах
   if (adminToken) {
