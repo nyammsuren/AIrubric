@@ -813,7 +813,8 @@
         barsEl.appendChild(box);
       });
 
-      if (!overallAiTextEl.value.trim()) {
+      const allFilled = rubric.flatMap(c => c.indicators).every(i => state.scores[i.id] != null);
+      if (allFilled && !overallAiTextEl.value.trim()) {
         overallAiTextEl.value = getOverallAiAdvice();
       }
 
