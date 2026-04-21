@@ -327,22 +327,10 @@
       </div>
     </section>
 
-    <section class="card radar-card" style="margin-bottom:24px;">
-      <h3 style="margin:0 0 16px;font-size:22px;">График</h3>
-      <div class="radar-wrap">
-        <canvas id="radarChart" height="120"></canvas>
-      </div>
-    </section>
-
     <section class="layout">
       <div class="criteria" id="criteria"></div>
 
       <aside class="side">
-        <div class="card" style="padding:18px 20px;">
-          <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
-          <div id="statusBoxBottom" class="status"></div>
-        </div>
-
         <div class="card summary">
           <h3>Нэгтгэл</h3>
           <div class="big-score">
@@ -374,7 +362,19 @@
           <div id="evidenceSummaryBox" style="display:none;margin-top:14px;"></div>
         </div>
 
+        <div class="card" id="submitCard" style="padding:18px 20px;">
+          <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
+          <div id="statusBoxBottom" class="status"></div>
+        </div>
+
       </aside>
+    </section>
+
+    <section class="card radar-card" id="radarSection">
+      <h3 style="margin:0 0 16px;font-size:22px;">График</h3>
+      <div class="radar-wrap">
+        <canvas id="radarChart" height="120"></canvas>
+      </div>
     </section>
 
   </div>
@@ -413,6 +413,20 @@
             document.getElementById("canvasImportBtn").style.display = "block";
             document.getElementById("instancePickerWrap").style.display = "block";
             document.getElementById("coursePickerWrap").style.display = "block";
+
+            // Admin mode=ai: график болон товчийг дээд талд гарга
+            const side = document.querySelector(".side");
+            const radarSection = document.getElementById("radarSection");
+            const submitCard = document.getElementById("submitCard");
+            const layoutSection = document.querySelector(".layout");
+
+            // График → layout-н өмнө
+            layoutSection.parentNode.insertBefore(radarSection, layoutSection);
+            radarSection.style.marginBottom = "24px";
+
+            // Үнэлгээ илгээх товч → sidebar дээш
+            side.insertBefore(submitCard, side.firstChild);
+
             if (mode === "rubric") {
               setTimeout(() => openEditor(), 300);
             } else if (mode === "ai") {
