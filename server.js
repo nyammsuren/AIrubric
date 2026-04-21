@@ -313,7 +313,6 @@ app.get("/api/canvas/courses", async (req, res) => {
     if (!instance) return res.status(400).json({ ok: false, message: "Canvas instance тохируулагдаагүй байна." });
     const data = await canvasGet(instance, "/api/v1/courses", {
       per_page: 50,
-      enrollment_type: "teacher",
       search_term: req.query.search || ""
     });
     res.json({ ok: true, courses: data.map(c => ({ id: c.id, name: c.name, course_code: c.course_code })) });
