@@ -365,15 +365,32 @@
   document.getElementById("searchInput").addEventListener("input", applyFilter);
   document.getElementById("filterSelect").addEventListener("change", applyFilter);
 
+  const CRITERION_SHEET_KEYS = [
+    "C1.Шалгуур 1","C2.Шалгуур 2","C3.Шалгуур 3",
+    "C4.Шалгуур 4","C5.Шалгуур 5","C6.Шалгуур 6"
+  ];
+
   function sheetRowToEval(row, idx) {
-    let criterionTotals = row.criterionTotals;
-    if (typeof criterionTotals === "string") {
-      try { criterionTotals = JSON.parse(criterionTotals); } catch { criterionTotals = {}; }
+    // criterionTotals-ийг тусдаа баганаас угсарна
+    const criterionTotals = {};
+    for (const k of CRITERION_SHEET_KEYS) {
+      const col = `${k}_оноо`;
+      if (row[col] !== undefined && row[col] !== "") {
+        criterionTotals[k] = Number(row[col]);
+      }
     }
+    // Хуучин JSON string форматтай мөрүүдийн дэмжлэг
+    if (Object.keys(criterionTotals).length === 0 && row.criterionTotals) {
+      let ct = row.criterionTotals;
+      if (typeof ct === "string") { try { ct = JSON.parse(ct); } catch { ct = {}; } }
+      if (ct && typeof ct === "object") Object.assign(criterionTotals, ct);
+    }
+
     let evidenceSummary = row.evidenceSummary;
     if (typeof evidenceSummary === "string") {
       try { evidenceSummary = JSON.parse(evidenceSummary); } catch { evidenceSummary = []; }
     }
+
     return {
       id: row.id || `sheet_${idx}`,
       courseCode: String(row.courseCode || ""),
@@ -385,7 +402,7 @@
       quality: String(row.quality || ""),
       overallAiAdvice: String(row.overallAiAdvice || ""),
       evidenceSummary: Array.isArray(evidenceSummary) ? evidenceSummary : [],
-      criterionTotals: (criterionTotals && typeof criterionTotals === "object") ? criterionTotals : {}
+      criterionTotals
     };
   }
 

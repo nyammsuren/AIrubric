@@ -423,17 +423,40 @@ app.post("/api/evaluations", async (req, res) => {
     evaluations.unshift(entry);
     if (evaluations.length > 200) evaluations.pop();
 
-    // Google Sheets руу дамжуулах (nested object-ийг JSON string болгоно)
+    // Google Sheets руу дамжуулах
     const googleUrl = process.env.GOOGLE_SCRIPT_URL;
     if (googleUrl) {
       try {
+        const criterionTotals = payload.criterionTotals || {};
+        const criterionPercents = payload.criterionPercents || {};
+        const scores = payload.scores || {};
+
+        // Үндсэн талбарууд
         const sheetPayload = {
-          ...payload,
-          criterionTotals: JSON.stringify(payload.criterionTotals || {}),
-          criterionPercents: JSON.stringify(payload.criterionPercents || {}),
-          scores: JSON.stringify(payload.scores || {}),
-          evidenceSummary: JSON.stringify(payload.evidenceSummary || [])
+          courseCode: payload.courseCode || "",
+          evaluator: payload.evaluator || "",
+          evalDate: payload.evalDate || "",
+          totalScore: payload.totalScore ?? 0,
+          maxScore: payload.maxScore ?? 72,
+          percent: payload.percent ?? 0,
+          quality: payload.quality || "",
+          overallAiAdvice: payload.overallAiAdvice || "",
+          evidenceSummary: JSON.stringify(payload.evidenceSummary || []),
+          exportedAt: payload.exportedAt || ""
         };
+
+        // Шалгуур тус бүрийн оноо тусдаа багана болгоно
+        for (const [key, val] of Object.entries(criterionTotals)) {
+          sheetPayload[`${key}_оноо`] = val;
+        }
+        for (const [key, val] of Object.entries(criterionPercents)) {
+          sheetPayload[`${key}_хувь`] = val;
+        }
+        // Үзүүлэлт тус бүрийн оноо
+        for (const [key, val] of Object.entries(scores)) {
+          sheetPayload[key] = val;
+        }
+
         await fetch(googleUrl, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
