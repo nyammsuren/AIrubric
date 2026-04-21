@@ -709,13 +709,8 @@
         score: state.scores[ind.id] ?? null
       })));
 
-      const unfilled = allIndicators.filter(x => x.score == null);
-      if (unfilled.length){
-        return `Нэгдсэн зөвлөмж гаргахын тулд бүх үзүүлэлтийг үнэлнэ үү. Үлдсэн үнэлгээ: ${unfilled.length}.`;
-      }
-
       const weakest = allIndicators
-        .filter(x => x.score <= 1)
+        .filter(x => x.score != null && x.score <= 1)
         .sort((a,b)=>a.score-b.score)
         .slice(0,5);
 
