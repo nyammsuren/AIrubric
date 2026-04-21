@@ -609,7 +609,7 @@
       } catch(e) {}
     })();
 
-    const state = { scores: {} };
+    const state = { scores: {}, reasons: {} };
 
     const criteriaEl = document.getElementById("criteria");
     const barsEl = document.getElementById("bars");
@@ -834,7 +834,8 @@
                 <h3 class="indicator-title">${indicator.title}</h3>
               </div>
               <div class="indicator-value">Сонгосон оноо: <strong>${state.scores[indicator.id] ?? "—"}</strong></div>
-            </div>`;
+            </div>
+            ${state.reasons[indicator.id] ? `<div style="font-size:13px;color:#4b5563;background:#f4f7ff;border:1px solid #dbe5ff;border-radius:10px;padding:8px 12px;margin-bottom:10px;">🤖 ${state.reasons[indicator.id]}</div>` : ""}`;
 
           const levels = document.createElement("div");
           levels.className = "levels";
@@ -1069,6 +1070,7 @@
     function applyAiEvaluation(result){
       const aiScores = normalizeAiScores(result.aiScores);
       Object.entries(aiScores).forEach(([key, value]) => { state.scores[key] = value; });
+      state.reasons = result.reasons || {};
       if (result.courseTitle) document.getElementById("courseCode").value = result.courseTitle;
       if (result.courseId) document.getElementById("canvasCourseId").value = String(result.courseId);
       if (result.overallAdvice) overallAiTextEl.value = result.overallAdvice;
