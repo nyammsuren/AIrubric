@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
 dotenv.config();
 
@@ -14,8 +14,8 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
 const GOOGLE_SCRIPT_URL = (process.env.GOOGLE_SCRIPT_URL || "").replace(/\/$/, "");
 const GOOGLE_SHEET_KEY = process.env.GOOGLE_SHEET_KEY || "";
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 // Load Canvas instances — supports both CANVAS_1_NAME and CANVAS1_NAME formats
 const CANVAS_INSTANCES = [];
@@ -30,8 +30,8 @@ for (let i = 1; ; i++) {
 if (CANVAS_INSTANCES.length === 0) {
   console.warn("No Canvas instances configured. Set CANVAS_1_NAME, CANVAS_1_URL, CANVAS_1_TOKEN in .env");
 }
-if (!ANTHROPIC_API_KEY) {
-  console.warn("Missing ANTHROPIC_API_KEY");
+if (!OPENAI_API_KEY) {
+  console.warn("Missing OPENAI_API_KEY");
 }
 
 function getInstance(key) {
@@ -39,7 +39,7 @@ function getInstance(key) {
   return CANVAS_INSTANCES.find(c => c.key === key) || CANVAS_INSTANCES[0] || null;
 }
 
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 const DEFAULT_RUBRIC_MAP = {
   "C1.1": "CLO-ийн тодорхой байдал",
@@ -286,17 +286,16 @@ ${rubricList}
 ${evidenceText}
 `;
 
-  const response = await anthropic.messages.create({
-    model: ANTHROPIC_MODEL,
-    max_tokens: 4096,
+  const response = await openai.chat.completions.create({
+    model: OPENAI_MODEL,
     temperature: 0,
     messages: [{ role: "user", content: prompt }]
   });
 
-  let text = (response.content?.[0]?.text || "").trim();
+  let text = (response.choices?.[0]?.message?.content || "").trim();
 
   if (!text) {
-    throw new Error("Claude хоосон хариу өглөө.");
+    throw new Error("OpenAI хоосон хариу өглөө.");
   }
 
   // markdown code fence арилгана
