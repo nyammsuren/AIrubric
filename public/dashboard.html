@@ -80,11 +80,9 @@
     .login-box{background:#fff;border-radius:24px;padding:36px 40px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(10,20,50,.25);text-align:center;}
     .login-box h2{margin:0 0 6px;font-size:22px}
     .login-box p{margin:0 0 24px;color:var(--muted);font-size:14px}
-    .login-pw-wrap{position:relative;margin-bottom:12px;}
-    .login-pw-wrap input{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 44px 12px 14px;font-size:15px;outline:none;}
-    .login-pw-wrap input:focus{border-color:var(--primary)}
-    .login-pw-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted);padding:4px;}
-    .login-box button{width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;}
+    .login-box input{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px;outline:none;margin-bottom:12px;font-family:inherit;}
+    .login-box input:focus{border-color:var(--primary)}
+    .login-box button{width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
     .login-box button:hover{background:#2242bb}
     .login-err{color:#ef4444;font-size:13px;margin-top:8px;display:none}
   </style>
@@ -108,8 +106,9 @@
       <h1>Үнэлгээний дашбоард</h1>
       <p>Бүх хичээлийн үнэлгээний нэгтгэл</p>
     </div>
-    <div style="display:flex;gap:10px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-white" id="editRubricBtn">✏️ Рубрик засах</button>
+      <button class="btn btn-white" id="aiEvalBtn">🤖 AI үнэлгээ</button>
       <a href="/" class="btn btn-white">← Үнэлгээ хийх</a>
     </div>
   </div>
@@ -373,7 +372,10 @@
   }
 
   document.getElementById("editRubricBtn").addEventListener("click", () => {
-    window.open(`/?adminToken=${adminToken}`, "_blank");
+    window.open(`/?adminToken=${adminToken}&mode=rubric`, "_blank");
+  });
+  document.getElementById("aiEvalBtn").addEventListener("click", () => {
+    window.open(`/?adminToken=${adminToken}&mode=ai`, "_blank");
   });
 
   // Хэрэв token байвал шууд dashboard харуулах

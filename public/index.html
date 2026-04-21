@@ -408,10 +408,16 @@
           });
           const data = await res.json();
           if (data.ok) {
+            const mode = new URLSearchParams(window.location.search).get("mode");
             document.querySelector(".hero-actions").style.display = "block";
             document.getElementById("canvasImportBtn").style.display = "block";
             document.getElementById("instancePickerWrap").style.display = "block";
             document.getElementById("coursePickerWrap").style.display = "block";
+            if (mode === "rubric") {
+              setTimeout(() => openEditor(), 300);
+            } else if (mode === "ai") {
+              document.getElementById("instancePickerWrap").scrollIntoView({ behavior: "smooth" });
+            }
           }
         } catch {}
       }
