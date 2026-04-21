@@ -423,14 +423,21 @@ app.post("/api/evaluations", async (req, res) => {
     evaluations.unshift(entry);
     if (evaluations.length > 200) evaluations.pop();
 
-    // Google Sheets руу дамжуулах
+    // Google Sheets руу дамжуулах (nested object-ийг JSON string болгоно)
     const googleUrl = process.env.GOOGLE_SCRIPT_URL;
     if (googleUrl) {
       try {
+        const sheetPayload = {
+          ...payload,
+          criterionTotals: JSON.stringify(payload.criterionTotals || {}),
+          criterionPercents: JSON.stringify(payload.criterionPercents || {}),
+          scores: JSON.stringify(payload.scores || {}),
+          evidenceSummary: JSON.stringify(payload.evidenceSummary || [])
+        };
         await fetch(googleUrl, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(sheetPayload)
         });
       } catch (sheetErr) {
         console.error("Google Sheets алдаа:", sheetErr.message);
