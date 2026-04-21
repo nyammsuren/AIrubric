@@ -38,8 +38,8 @@
     .hero p{margin:6px 0;color:rgba(255,255,255,.92)}
     .meta{
       display:grid;
-      grid-template-columns:1fr 1.1fr 1fr auto;
-      gap:12px;margin-top:18px;align-items:end;
+      grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));
+      gap:12px;margin-top:18px;align-items:stretch;
     }
     .field{
       background:rgba(255,255,255,.12);
@@ -66,7 +66,7 @@
 
     .layout{
       display:grid;
-      grid-template-columns:minmax(0,1fr) 380px;
+      grid-template-columns:minmax(0,1fr) 420px;
       gap:24px;align-items:start
     }
     .criteria{display:flex;flex-direction:column;gap:18px}
@@ -117,8 +117,9 @@
 
     .side{position:sticky;top:20px;display:flex;flex-direction:column;gap:16px}
     .summary{padding:20px}
-    .summary h3{margin:0 0 14px;font-size:22px}
-    .big-score{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+    .summary-top{display:grid;grid-template-columns:1fr 180px;gap:14px;align-items:start;margin-bottom:14px}
+    .summary h3{margin:0 0 10px;font-size:20px}
+    .big-score{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
     .stat{
       background:#f8faff;border:1px solid var(--line);border-radius:18px;
       padding:14px;text-align:center
@@ -154,8 +155,7 @@
     .status.ok{color:#0f9d58;background:#eefcf4;border-color:#c9efd7}
     .status.err{color:#b42318;background:#fff4f2;border-color:#f6d0ca}
 
-    .radar-card{margin-top:24px;padding:20px;}
-    .radar-wrap{max-width:780px;margin:0 auto;}
+    .radar-mini canvas{width:100%!important;height:auto!important}
 
     /* ===== COURSE DROPDOWN ===== */
     .course-picker{position:relative;}
@@ -320,10 +320,13 @@
           <input type="hidden" id="canvasCourseId" />
           <div class="course-dropdown" id="courseDropdown"></div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <button class="btn btn-edit" id="canvasImportBtn" style="display:none;">AI үнэлгээ</button>
-          <div id="statusBoxHero" class="status" style="font-size:12px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;display:none;"></div>
+        <div id="canvasImportWrap" style="display:none;">
+          <button id="canvasImportBtn"
+            style="width:100%;height:100%;background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;">
+            🤖 AI үнэлгээ
+          </button>
         </div>
+        <div id="statusBoxHero" class="status" style="font-size:12px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;display:none;"></div>
       </div>
     </section>
 
@@ -332,18 +335,25 @@
 
       <aside class="side">
         <div class="card summary">
-          <h3>Нэгтгэл</h3>
-          <div class="big-score">
-            <div class="stat">
-              <div class="label">Нийт оноо</div>
-              <div class="value" id="totalScore">0</div>
+          <div class="summary-top">
+            <div>
+              <h3>Нэгтгэл</h3>
+              <div class="big-score">
+                <div class="stat">
+                  <div class="label">Нийт оноо</div>
+                  <div class="value" id="totalScore">0</div>
+                </div>
+                <div class="stat">
+                  <div class="label">Хувь</div>
+                  <div class="value" id="totalPercent">0%</div>
+                </div>
+              </div>
+              <div class="quality" id="qualityLabel">Сайжруулах шаардлагатай</div>
             </div>
-            <div class="stat">
-              <div class="label">Хувь</div>
-              <div class="value" id="totalPercent">0%</div>
+            <div class="radar-mini">
+              <canvas id="radarChart"></canvas>
             </div>
           </div>
-          <div class="quality" id="qualityLabel">Сайжруулах шаардлагатай</div>
           <div class="bars" id="bars"></div>
           <div class="legend">
             <div><strong>Тайлбар</strong></div>
@@ -370,12 +380,6 @@
       </aside>
     </section>
 
-    <section class="card radar-card" id="radarSection">
-      <h3 style="margin:0 0 16px;font-size:22px;">График</h3>
-      <div class="radar-wrap">
-        <canvas id="radarChart" height="120"></canvas>
-      </div>
-    </section>
 
   </div>
 
@@ -410,21 +414,13 @@
           if (data.ok) {
             const mode = new URLSearchParams(window.location.search).get("mode");
             document.querySelector(".hero-actions").style.display = "block";
-            document.getElementById("canvasImportBtn").style.display = "block";
+            document.getElementById("canvasImportWrap").style.display = "block";
             document.getElementById("instancePickerWrap").style.display = "block";
             document.getElementById("coursePickerWrap").style.display = "block";
 
-            // Admin mode=ai: график болон товчийг дээд талд гарга
+            // Submit товч → sidebar дээш
             const side = document.querySelector(".side");
-            const radarSection = document.getElementById("radarSection");
             const submitCard = document.getElementById("submitCard");
-            const layoutSection = document.querySelector(".layout");
-
-            // График → layout-н өмнө
-            layoutSection.parentNode.insertBefore(radarSection, layoutSection);
-            radarSection.style.marginBottom = "24px";
-
-            // Үнэлгээ илгээх товч → sidebar дээш
             side.insertBefore(submitCard, side.firstChild);
 
             if (mode === "rubric") {
