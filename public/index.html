@@ -285,7 +285,6 @@
       <div class="hero-actions" style="display:none;">
         <div id="editorTools" style="display:none;gap:8px;align-items:center;">
           <button class="btn btn-edit" id="openEditorBtn">✏️ Рубрик засах</button>
-          <button class="btn btn-edit" id="downloadXlsxBtn">⬇ XLSX татах</button>
         </div>
         <button class="btn btn-edit" id="toggleToolsBtn" style="font-size:18px;padding:8px 12px;">⚙️</button>
       </div>
@@ -370,7 +369,6 @@
           </div>
           <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
             <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
-            <button class="btn btn-edit" id="downloadXlsxBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;background:#315efb;color:#fff;">⬇ XLSX татах</button>
             <div id="statusBoxBottom" class="status"></div>
           </div>
         </div>
@@ -1166,8 +1164,6 @@
       XLSX.writeFile(wb, `rubric_${date}.xlsx`);
     }
 
-    document.getElementById("downloadXlsxBtn").addEventListener("click", downloadXLSX);
-    document.getElementById("downloadXlsxBtnBottom").addEventListener("click", downloadXLSX);
 
     // ===== INSTANCE SELECTOR =====
     (function(){
