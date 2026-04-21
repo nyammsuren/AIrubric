@@ -38,7 +38,7 @@
     .hero p{margin:6px 0;color:rgba(255,255,255,.92)}
     .meta{
       display:grid;
-      grid-template-columns:1fr 1.1fr 1fr 1fr 1fr auto;
+      grid-template-columns:1fr 1.1fr 1fr auto;
       gap:12px;margin-top:18px;align-items:end;
     }
     .field{
@@ -309,20 +309,20 @@
           <label>Үнэлгээ хийх багшийн код</label>
           <input id="evaluator" placeholder="Жишээ: Эксперт 1" />
         </div>
-        <div class="field" id="instancePickerWrap">
+        <div class="field" id="instancePickerWrap" style="display:none;">
           <label>Canvas аккаунт</label>
           <select id="instanceSelect" style="width:100%;border:none;outline:none;background:transparent;color:#fff;font-size:14px;cursor:pointer;">
             <option value="" disabled>Ачааллаж байна...</option>
           </select>
         </div>
-        <div class="field course-picker" id="coursePickerWrap">
+        <div class="field course-picker" id="coursePickerWrap" style="display:none;">
           <label>Canvas course</label>
           <input id="courseSearchInput" placeholder="Хичээл хайх..." autocomplete="off" />
           <input type="hidden" id="canvasCourseId" />
           <div class="course-dropdown" id="courseDropdown"></div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;">
-          <button class="btn btn-edit" id="canvasImportBtn">AI үнэлгээ</button>
+          <button class="btn btn-edit" id="canvasImportBtn" style="display:none;">AI үнэлгээ</button>
           <button class="btn btn-edit" id="submitBtn">Үнэлгээ илгээх</button>
           <div id="statusBoxHero" class="status" style="font-size:12px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;display:none;"></div>
         </div>
@@ -417,6 +417,9 @@
           const data = await res.json();
           if (data.ok) {
             document.querySelector(".hero-actions").style.display = "block";
+            document.getElementById("canvasImportBtn").style.display = "block";
+            document.getElementById("instancePickerWrap").style.display = "block";
+            document.getElementById("coursePickerWrap").style.display = "block";
           }
         } catch {}
       }
