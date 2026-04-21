@@ -426,12 +426,15 @@ app.post("/api/evaluations", async (req, res) => {
     // Google Sheets руу дамжуулах
     const googleUrl = process.env.GOOGLE_SCRIPT_URL;
     if (googleUrl) {
-      fetch(googleUrl, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      }).catch(() => {});
+      try {
+        await fetch(googleUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+      } catch (sheetErr) {
+        console.error("Google Sheets алдаа:", sheetErr.message);
+      }
     }
 
     res.json({ ok: true, id: entry.id });
