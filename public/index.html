@@ -38,7 +38,7 @@
     .hero p{margin:6px 0;color:rgba(255,255,255,.92)}
     .meta{
       display:grid;
-      grid-template-columns:1.1fr 1fr 1fr 1fr auto;
+      grid-template-columns:1fr 1.1fr 1fr 1fr 1fr auto;
       gap:12px;margin-top:18px;align-items:end;
     }
     .field{
@@ -53,6 +53,7 @@
       width:100%;border:none;outline:none;background:transparent;color:#fff;font-size:14px
     }
     .field input::placeholder,.field textarea::placeholder{color:rgba(255,255,255,.6)}
+    .field select option{color:#172033;background:#fff;}
     .btn{
       border:none;cursor:pointer;border-radius:14px;padding:12px 16px;
       font-weight:800;transition:.2s ease;white-space:nowrap
@@ -304,6 +305,12 @@
         <div class="field">
           <label>Үнэлгээ хийх багшийн код</label>
           <input id="evaluator" placeholder="Жишээ: Эксперт 1" />
+        </div>
+        <div class="field" id="instancePickerWrap">
+          <label>Canvas аккаунт</label>
+          <select id="instanceSelect" style="width:100%;border:none;outline:none;background:transparent;color:#fff;font-size:14px;cursor:pointer;">
+            <option value="" disabled>Ачааллаж байна...</option>
+          </select>
         </div>
         <div class="field course-picker" id="coursePickerWrap">
           <label>Canvas course</label>
@@ -1077,10 +1084,11 @@
       try {
         showStatus("Canvas-аас өгөгдөл татаж, AI үнэлгээ хийж байна...", true);
         renderEvidenceSummary(["Canvas-аас нотолгоо уншиж байна..."]);
+        const instanceKey = document.getElementById("instanceSelect").value;
         const res = await fetch("/api/canvas/analyze-course", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseId, evaluator: evaluator || "AI үнэлэгч", rubric })
+          body: JSON.stringify({ courseId, instanceKey, evaluator: evaluator || "AI үнэлэгч", rubric })
         });
         const data = await res.json();
         if (!res.ok || !data.ok) {
@@ -1126,6 +1134,29 @@
     document.getElementById("downloadXlsxBtn").addEventListener("click", downloadXLSX);
     document.getElementById("downloadXlsxBtnBottom").addEventListener("click", downloadXLSX);
 
+    // ===== INSTANCE SELECTOR =====
+    (function(){
+      const sel = document.getElementById("instanceSelect");
+      fetch("/api/canvas/instances")
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok && data.instances.length > 0) {
+            sel.innerHTML = data.instances.map(inst =>
+              `<option value="${inst.key}">${inst.name}</option>`
+            ).join("");
+          } else {
+            sel.innerHTML = `<option value="">Instance тохируулагдаагүй</option>`;
+          }
+        })
+        .catch(() => { sel.innerHTML = `<option value="">Холбогдож чадсангүй</option>`; });
+
+      // instance солигдоход курсийн сонголтыг цэвэрлэнэ
+      sel.addEventListener("change", () => {
+        document.getElementById("courseSearchInput").value = "";
+        document.getElementById("canvasCourseId").value = "";
+      });
+    })();
+
     // ===== COURSE PICKER DROPDOWN =====
     (function(){
       const searchInput = document.getElementById("courseSearchInput");
@@ -1169,10 +1200,12 @@
       }
 
       async function loadCourses(){
+        loaded = false;
         dropdown.innerHTML = `<div class="course-option loading">Ачааллаж байна...</div>`;
         openDropdown();
+        const instanceKey = document.getElementById("instanceSelect").value;
         try {
-          const res  = await fetch("/api/canvas/courses");
+          const res  = await fetch(`/api/canvas/courses?instance=${encodeURIComponent(instanceKey)}`);
           const data = await res.json();
           if (data.ok && Array.isArray(data.courses)){
             allCourses = data.courses;

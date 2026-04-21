@@ -11,13 +11,29 @@ app.use(express.json({ limit: "3mb" }));
 app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
-const CANVAS_BASE_URL = (process.env.CANVAS_BASE_URL || "").replace(/\/$/, "");
-const CANVAS_ACCESS_TOKEN = process.env.CANVAS_ACCESS_TOKEN || "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-if (!CANVAS_BASE_URL || !CANVAS_ACCESS_TOKEN || !OPENAI_API_KEY) {
-  console.warn("Missing one or more required env vars: CANVAS_BASE_URL, CANVAS_ACCESS_TOKEN, OPENAI_API_KEY");
+// Load Canvas instances from CANVAS_N_NAME / CANVAS_N_URL / CANVAS_N_TOKEN
+const CANVAS_INSTANCES = [];
+for (let i = 1; ; i++) {
+  const name  = process.env[`CANVAS_${i}_NAME`];
+  const url   = (process.env[`CANVAS_${i}_URL`] || "").replace(/\/$/, "");
+  const token = process.env[`CANVAS_${i}_TOKEN`];
+  if (!name && !url && !token) break;
+  if (name && url && token) CANVAS_INSTANCES.push({ key: `canvas${i}`, name, url, token });
+}
+
+if (CANVAS_INSTANCES.length === 0) {
+  console.warn("No Canvas instances configured. Set CANVAS_1_NAME, CANVAS_1_URL, CANVAS_1_TOKEN in .env");
+}
+if (!OPENAI_API_KEY) {
+  console.warn("Missing OPENAI_API_KEY");
+}
+
+function getInstance(key) {
+  if (!key) return CANVAS_INSTANCES[0] || null;
+  return CANVAS_INSTANCES.find(c => c.key === key) || CANVAS_INSTANCES[0] || null;
 }
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
@@ -62,15 +78,15 @@ function buildRubricMap(clientRubric) {
   return Object.keys(map).length > 0 ? map : DEFAULT_RUBRIC_MAP;
 }
 
-function authHeaders() {
+function authHeaders(instance) {
   return {
-    Authorization: `Bearer ${CANVAS_ACCESS_TOKEN}`,
+    Authorization: `Bearer ${instance.token}`,
     "Content-Type": "application/json"
   };
 }
 
-async function canvasGet(path, query = {}) {
-  const url = new URL(`${CANVAS_BASE_URL}${path}`);
+async function canvasGet(instance, path, query = {}) {
+  const url = new URL(`${instance.url}${path}`);
   Object.entries(query).forEach(([k, v]) => {
     if (Array.isArray(v)) {
       v.forEach(item => url.searchParams.append(k, item));
@@ -79,7 +95,7 @@ async function canvasGet(path, query = {}) {
     }
   });
 
-  const response = await fetch(url, { headers: authHeaders() });
+  const response = await fetch(url, { headers: authHeaders(instance) });
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Canvas API error ${response.status}: ${text.slice(0, 300)}`);
@@ -103,19 +119,19 @@ function truncateText(text, max = 18000) {
   return text.length <= max ? text : `${text.slice(0, max)}\n\n[TRUNCATED]`;
 }
 
-async function getCourseBundle(courseId) {
+async function getCourseBundle(instance, courseId) {
   const [course, modules, assignments, discussions] = await Promise.all([
-    canvasGet(`/api/v1/courses/${courseId}`, { include: ["syllabus_body", "term"] }),
-    canvasGet(`/api/v1/courses/${courseId}/modules`, { per_page: 100, include: ["items"] }).catch(() => []),
-    canvasGet(`/api/v1/courses/${courseId}/assignments`, { per_page: 100 }).catch(() => []),
-    canvasGet(`/api/v1/courses/${courseId}/discussion_topics`, { per_page: 100 }).catch(() => [])
+    canvasGet(instance, `/api/v1/courses/${courseId}`, { include: ["syllabus_body", "term"] }),
+    canvasGet(instance, `/api/v1/courses/${courseId}/modules`, { per_page: 100, include: ["items"] }).catch(() => []),
+    canvasGet(instance, `/api/v1/courses/${courseId}/assignments`, { per_page: 100 }).catch(() => []),
+    canvasGet(instance, `/api/v1/courses/${courseId}/discussion_topics`, { per_page: 100 }).catch(() => [])
   ]);
 
-  const pagesIndex = await canvasGet(`/api/v1/courses/${courseId}/pages`, { per_page: 100 }).catch(() => []);
+  const pagesIndex = await canvasGet(instance, `/api/v1/courses/${courseId}/pages`, { per_page: 100 }).catch(() => []);
   const pages = [];
   for (const page of pagesIndex.slice(0, 20)) {
     try {
-      const full = await canvasGet(`/api/v1/courses/${courseId}/pages/${encodeURIComponent(page.url)}`);
+      const full = await canvasGet(instance, `/api/v1/courses/${courseId}/pages/${encodeURIComponent(page.url)}`);
       pages.push(full);
     } catch {
       // skip unreadable pages
@@ -287,9 +303,15 @@ ${evidenceText}
   };
 }
 
+app.get("/api/canvas/instances", (req, res) => {
+  res.json({ ok: true, instances: CANVAS_INSTANCES.map(({ key, name }) => ({ key, name })) });
+});
+
 app.get("/api/canvas/courses", async (req, res) => {
   try {
-    const data = await canvasGet("/api/v1/courses", {
+    const instance = getInstance(req.query.instance);
+    if (!instance) return res.status(400).json({ ok: false, message: "Canvas instance тохируулагдаагүй байна." });
+    const data = await canvasGet(instance, "/api/v1/courses", {
       per_page: 50,
       enrollment_type: "teacher",
       search_term: req.query.search || ""
@@ -302,13 +324,18 @@ app.get("/api/canvas/courses", async (req, res) => {
 
 app.post("/api/canvas/analyze-course", async (req, res) => {
   try {
-    const { courseId, rubric } = req.body || {};
+    const { courseId, instanceKey, rubric } = req.body || {};
     if (!courseId) {
       return res.status(400).json({ ok: false, message: "courseId шаардлагатай." });
     }
 
+    const instance = getInstance(instanceKey);
+    if (!instance) {
+      return res.status(400).json({ ok: false, message: "Canvas instance тохируулагдаагүй байна." });
+    }
+
     const rubricMap = buildRubricMap(rubric);
-    const bundle = await getCourseBundle(courseId);
+    const bundle = await getCourseBundle(instance, courseId);
     const evidenceText = buildEvidenceText(bundle);
     const ai = await scoreWithAI(evidenceText, rubricMap);
 
