@@ -234,7 +234,6 @@
     document.getElementById("loginOverlay").style.display = "none";
     document.getElementById("mainContent").style.display = "block";
     load();
-    loadCharts();
   }
 
   function qualityBadge(percent) {
@@ -366,11 +365,37 @@
   document.getElementById("searchInput").addEventListener("input", applyFilter);
   document.getElementById("filterSelect").addEventListener("change", applyFilter);
 
+  function sheetRowToEval(row, idx) {
+    let criterionTotals = row.criterionTotals;
+    if (typeof criterionTotals === "string") {
+      try { criterionTotals = JSON.parse(criterionTotals); } catch { criterionTotals = {}; }
+    }
+    let evidenceSummary = row.evidenceSummary;
+    if (typeof evidenceSummary === "string") {
+      try { evidenceSummary = JSON.parse(evidenceSummary); } catch { evidenceSummary = []; }
+    }
+    return {
+      id: row.id || `sheet_${idx}`,
+      courseCode: String(row.courseCode || ""),
+      evaluator: String(row.evaluator || ""),
+      evalDate: String(row.evalDate || "").slice(0, 10),
+      totalScore: Number(row.totalScore || 0),
+      maxScore: Number(row.maxScore || 72),
+      percent: Number(row.percent || 0),
+      quality: String(row.quality || ""),
+      overallAiAdvice: String(row.overallAiAdvice || ""),
+      evidenceSummary: Array.isArray(evidenceSummary) ? evidenceSummary : [],
+      criterionTotals: (criterionTotals && typeof criterionTotals === "object") ? criterionTotals : {}
+    };
+  }
+
   async function load() {
+    const headers = { "Authorization": `Bearer ${adminToken}` };
+
+    // 1. Server memory (сүүлийн submission-ууд)
+    let memEvals = [];
     try {
-      const res = await fetch("/api/evaluations", {
-        headers: { "Authorization": `Bearer ${adminToken}` }
-      });
+      const res = await fetch("/api/evaluations", { headers });
       if (res.status === 401) {
         localStorage.removeItem("adminToken");
         document.getElementById("loginOverlay").style.display = "flex";
@@ -378,15 +403,29 @@
         return;
       }
       const data = await res.json();
-      if (data.ok) {
-        allEvals = data.evaluations;
-        renderStats(allEvals);
-        renderTable(allEvals);
+      if (data.ok) memEvals = data.evaluations;
+    } catch {}
+
+    // 2. Google Sheets (бүх хадгалагдсан өгөгдөл)
+    let sheetEvals = [];
+    try {
+      const res = await fetch("/api/sheet-data", { headers });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.ok && Array.isArray(json.data)) {
+          sheetEvals = json.data.map(sheetRowToEval).reverse();
+        }
       }
-    } catch {
-      document.getElementById("emptyState").style.display = "block";
-      document.getElementById("emptyState").textContent = "Серверт холбогдож чадсангүй.";
-    }
+    } catch {}
+
+    // 3. Нэгтгэх: Sheets + memory (давхардлыг courseCode+evalDate-аар шүүнэ)
+    const seen = new Set(sheetEvals.map(e => `${e.courseCode}|${e.evalDate}`));
+    const extra = memEvals.filter(e => !seen.has(`${e.courseCode}|${e.evalDate}`));
+    allEvals = [...extra, ...sheetEvals];
+
+    renderStats(allEvals);
+    renderTable(allEvals);
+    renderCharts(allEvals);
   }
 
   function openAdminPage(mode) {
@@ -414,88 +453,74 @@
   ];
   const CRITERION_KEYS = ["C1.Шалгуур 1","C2.Шалгуур 2","C3.Шалгуур 3","C4.Шалгуур 4","C5.Шалгуур 5","C6.Шалгуур 6"];
 
-  async function loadCharts() {
-    try {
-      const res = await fetch("/api/sheet-data", {
-        headers: { "Authorization": `Bearer ${adminToken}` }
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      if (!json.ok || !Array.isArray(json.data) || json.data.length === 0) return;
+  function renderCharts(evals) {
+    if (!evals || evals.length === 0) return;
 
-      const rows = json.data;
-
-      // Шалгуур тусбүрийн дундаж
-      const criterionSums = Object.fromEntries(CRITERION_KEYS.map(k => [k, 0]));
-      let count = 0;
-      for (const row of rows) {
-        let totals = row.criterionTotals;
-        if (typeof totals === "string") {
-          try { totals = JSON.parse(totals); } catch { continue; }
-        }
-        if (!totals || typeof totals !== "object") continue;
-        for (const k of CRITERION_KEYS) {
-          criterionSums[k] += Number(totals[k] || 0);
-        }
-        count++;
+    // Шалгуур тусбүрийн дундаж
+    const criterionSums = Object.fromEntries(CRITERION_KEYS.map(k => [k, 0]));
+    let count = 0;
+    for (const e of evals) {
+      const totals = e.criterionTotals;
+      if (!totals || typeof totals !== "object") continue;
+      for (const k of CRITERION_KEYS) {
+        criterionSums[k] += Number(totals[k] || 0);
       }
-      const criterionAvgs = CRITERION_KEYS.map(k => count ? Math.round((criterionSums[k] / count) * 10) / 10 : 0);
+      count++;
+    }
+    const criterionAvgs = CRITERION_KEYS.map(k => count ? Math.round((criterionSums[k] / count) * 10) / 10 : 0);
 
-      // Чанарын хуваарилалт
-      let top=0, good=0, mid=0, low=0;
-      for (const row of rows) {
-        const p = Number(row.percent || 0);
-        if (p >= 90) top++;
-        else if (p >= 75) good++;
-        else if (p >= 60) mid++;
-        else low++;
+    // Чанарын хуваарилалт
+    let top=0, good=0, mid=0, low=0;
+    for (const e of evals) {
+      if (e.percent >= 90) top++;
+      else if (e.percent >= 75) good++;
+      else if (e.percent >= 60) mid++;
+      else low++;
+    }
+
+    document.getElementById("chartsSection").style.display = "grid";
+
+    if (criterionChartInstance) criterionChartInstance.destroy();
+    criterionChartInstance = new Chart(document.getElementById("criterionChart"), {
+      type: "bar",
+      data: {
+        labels: CRITERION_LABELS,
+        datasets: [{
+          label: "Дундаж оноо (12-оос)",
+          data: criterionAvgs,
+          backgroundColor: "rgba(49,94,251,0.75)",
+          borderRadius: 8,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, max: 12, grid: { color: "#edf1f7" } },
+          x: { grid: { display: false } }
+        }
       }
+    });
 
-      document.getElementById("chartsSection").style.display = "grid";
-
-      if (criterionChartInstance) criterionChartInstance.destroy();
-      criterionChartInstance = new Chart(document.getElementById("criterionChart"), {
-        type: "bar",
-        data: {
-          labels: CRITERION_LABELS,
-          datasets: [{
-            label: "Дундаж оноо (12-оос)",
-            data: criterionAvgs,
-            backgroundColor: "rgba(49,94,251,0.75)",
-            borderRadius: 8,
-            borderSkipped: false
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true, max: 12, grid: { color: "#edf1f7" } },
-            x: { grid: { display: false } }
-          }
+    if (qualityChartInstance) qualityChartInstance.destroy();
+    qualityChartInstance = new Chart(document.getElementById("qualityChart"), {
+      type: "doughnut",
+      data: {
+        labels: ["Жишиг (90%+)", "Сайн (75–89%)", "Дунд (60–74%)", "Сул (<60%)"],
+        datasets: [{
+          data: [top, good, mid, low],
+          backgroundColor: ["#16a34a","#315efb","#f59e0b","#ef4444"],
+          borderWidth: 2, borderColor: "#fff"
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { padding: 14, font: { size: 12 } } }
         }
-      });
-
-      if (qualityChartInstance) qualityChartInstance.destroy();
-      qualityChartInstance = new Chart(document.getElementById("qualityChart"), {
-        type: "doughnut",
-        data: {
-          labels: ["Жишиг (90%+)", "Сайн (75–89%)", "Дунд (60–74%)", "Сул (<60%)"],
-          datasets: [{
-            data: [top, good, mid, low],
-            backgroundColor: ["#16a34a","#315efb","#f59e0b","#ef4444"],
-            borderWidth: 2, borderColor: "#fff"
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
-            legend: { position: "bottom", labels: { padding: 14, font: { size: 12 } } }
-          }
-        }
-      });
-
-    } catch { /* График ачаалахад алдаа гарлаа */ }
+      }
+    });
   }
 
   // Хэрэв token байвал шууд dashboard харуулах
