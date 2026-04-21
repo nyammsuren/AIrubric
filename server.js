@@ -126,7 +126,7 @@ async function getCourseBundle(instance, courseId) {
   const [course, modules, assignments, discussions] = await Promise.all([
     canvasGet(instance, `/api/v1/courses/${courseId}`, { include: ["syllabus_body", "term"] }),
     canvasGet(instance, `/api/v1/courses/${courseId}/modules`, { per_page: 100, include: ["items"] }).catch(() => []),
-    canvasGet(instance, `/api/v1/courses/${courseId}/assignments`, { per_page: 100 }).catch(() => []),
+    canvasGet(instance, `/api/v1/courses/${courseId}/assignments`, { per_page: 100, include: ["rubric"] }).catch(() => []),
     canvasGet(instance, `/api/v1/courses/${courseId}/discussion_topics`, { per_page: 100 }).catch(() => [])
   ]);
 
@@ -153,7 +153,15 @@ async function getCourseBundle(instance, courseId) {
     })
   );
 
-  return { course, modules, assignments, discussions: discussionsWithEntries, pages };
+  const rubrics = await canvasGet(instance, `/api/v1/courses/${courseId}/rubrics`, { per_page: 100 }).catch(() => []);
+
+  const assignmentsWithRubric = assignments.map(a => ({
+    ...a,
+    hasRubric: !!(a.rubric && a.rubric.length > 0),
+    rubricCriteriaCount: a.rubric ? a.rubric.length : 0
+  }));
+
+  return { course, modules, assignments: assignmentsWithRubric, discussions: discussionsWithEntries, pages, rubrics };
 }
 
 function buildEvidenceText(bundle) {
@@ -172,8 +180,16 @@ function buildEvidenceText(bundle) {
     `ASSIGNMENT ${i + 1}: ${a.name || ""}`,
     `POINTS: ${a.points_possible ?? ""}`,
     `DUE: ${a.due_at || ""}`,
+    `HAS_RUBRIC: ${a.hasRubric ? `yes (${a.rubricCriteriaCount} criteria)` : "no"}`,
     `DESCRIPTION: ${stripHtml(a.description || "")}`
   ].join("\n")).join("\n\n");
+
+  const rubricPart = bundle.rubrics.map((r, i) => {
+    const criteria = Array.isArray(r.data)
+      ? r.data.map(c => `  - ${c.description || ""} (${c.points} pts, ${c.ratings ? c.ratings.length : 0} levels)`).join("\n")
+      : "";
+    return `RUBRIC ${i + 1}: ${r.title || ""}\nCRITERIA:\n${criteria}`;
+  }).join("\n\n");
 
   const pagePart = bundle.pages.map((p, i) => [
     `PAGE ${i + 1}: ${p.title || p.url || ""}`,
@@ -193,6 +209,8 @@ function buildEvidenceText(bundle) {
     modulePart,
     "=== ASSIGNMENTS ===",
     assignmentPart,
+    "=== RUBRICS ===",
+    rubricPart,
     "=== PAGES ===",
     pagePart,
     "=== DISCUSSIONS ===",
