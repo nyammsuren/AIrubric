@@ -423,39 +423,45 @@ app.post("/api/evaluations", async (req, res) => {
     evaluations.unshift(entry);
     if (evaluations.length > 200) evaluations.pop();
 
-    // Google Sheets руу дамжуулах
+    // Google Sheets руу дамжуулах — SPSS-д тохирсон flat формат
     const googleUrl = process.env.GOOGLE_SCRIPT_URL;
     if (googleUrl) {
       try {
-        const criterionTotals = payload.criterionTotals || {};
-        const criterionPercents = payload.criterionPercents || {};
-        const scores = payload.scores || {};
+        const ct = payload.criterionTotals || {};
+        const cp = payload.criterionPercents || {};
+        const sc = payload.scores || {};
 
-        // Үндсэн талбарууд
         const sheetPayload = {
-          courseCode: payload.courseCode || "",
-          evaluator: payload.evaluator || "",
-          evalDate: payload.evalDate || "",
-          totalScore: payload.totalScore ?? 0,
-          maxScore: payload.maxScore ?? 72,
-          percent: payload.percent ?? 0,
-          quality: payload.quality || "",
+          courseCode:      payload.courseCode || "",
+          evaluator:       payload.evaluator || "",
+          evalDate:        payload.evalDate || "",
+          totalScore:      payload.totalScore ?? 0,
+          maxScore:        payload.maxScore ?? 72,
+          percent:         payload.percent ?? 0,
+          quality:         payload.quality || "",
           overallAiAdvice: payload.overallAiAdvice || "",
-          evidenceSummary: JSON.stringify(payload.evidenceSummary || []),
-          exportedAt: payload.exportedAt || ""
+          exportedAt:      payload.exportedAt || "",
+          // Шалгуур тус бүрийн нийт оноо (C1–C6)
+          C1_score: ct["C1.Шалгуур 1"] ?? "", C1_percent: cp["C1.Шалгуур 1"] ?? "",
+          C2_score: ct["C2.Шалгуур 2"] ?? "", C2_percent: cp["C2.Шалгуур 2"] ?? "",
+          C3_score: ct["C3.Шалгуур 3"] ?? "", C3_percent: cp["C3.Шалгуур 3"] ?? "",
+          C4_score: ct["C4.Шалгуур 4"] ?? "", C4_percent: cp["C4.Шалгуур 4"] ?? "",
+          C5_score: ct["C5.Шалгуур 5"] ?? "", C5_percent: cp["C5.Шалгуур 5"] ?? "",
+          C6_score: ct["C6.Шалгуур 6"] ?? "", C6_percent: cp["C6.Шалгуур 6"] ?? "",
+          // Үзүүлэлт тус бүрийн оноо (C1.1 – C6.4)
+          "C1.1": sc["C1.1"] ?? "", "C1.2": sc["C1.2"] ?? "",
+          "C1.3": sc["C1.3"] ?? "", "C1.4": sc["C1.4"] ?? "",
+          "C2.1": sc["C2.1"] ?? "", "C2.2": sc["C2.2"] ?? "",
+          "C2.3": sc["C2.3"] ?? "", "C2.4": sc["C2.4"] ?? "",
+          "C3.1": sc["C3.1"] ?? "", "C3.2": sc["C3.2"] ?? "",
+          "C3.3": sc["C3.3"] ?? "", "C3.4": sc["C3.4"] ?? "",
+          "C4.1": sc["C4.1"] ?? "", "C4.2": sc["C4.2"] ?? "",
+          "C4.3": sc["C4.3"] ?? "", "C4.4": sc["C4.4"] ?? "",
+          "C5.1": sc["C5.1"] ?? "", "C5.2": sc["C5.2"] ?? "",
+          "C5.3": sc["C5.3"] ?? "", "C5.4": sc["C5.4"] ?? "",
+          "C6.1": sc["C6.1"] ?? "", "C6.2": sc["C6.2"] ?? "",
+          "C6.3": sc["C6.3"] ?? "", "C6.4": sc["C6.4"] ?? ""
         };
-
-        // Шалгуур тус бүрийн оноо тусдаа багана болгоно
-        for (const [key, val] of Object.entries(criterionTotals)) {
-          sheetPayload[`${key}_оноо`] = val;
-        }
-        for (const [key, val] of Object.entries(criterionPercents)) {
-          sheetPayload[`${key}_хувь`] = val;
-        }
-        // Үзүүлэлт тус бүрийн оноо
-        for (const [key, val] of Object.entries(scores)) {
-          sheetPayload[key] = val;
-        }
 
         await fetch(googleUrl, {
           method: "POST",

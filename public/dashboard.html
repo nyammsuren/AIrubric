@@ -370,19 +370,27 @@
     "C4.Шалгуур 4","C5.Шалгуур 5","C6.Шалгуур 6"
   ];
 
+  // C1–C6 товч нэр → CRITERION_SHEET_KEYS хоорондын map
+  const CRITERION_SHORT = ["C1","C2","C3","C4","C5","C6"];
+
   function sheetRowToEval(row, idx) {
     const criterionTotals = {};
-    for (const k of CRITERION_SHEET_KEYS) {
-      // Шинэ формат: _оноо
-      if (row[`${k}_оноо`] !== undefined && row[`${k}_оноо`] !== "") {
-        criterionTotals[k] = Number(row[`${k}_оноо`]);
+    CRITERION_SHEET_KEYS.forEach((k, i) => {
+      const short = CRITERION_SHORT[i];
+      // Шинэ формат: C1_score, C2_score...
+      if (row[`${short}_score`] !== undefined && row[`${short}_score`] !== "") {
+        criterionTotals[k] = Number(row[`${short}_score`]);
       }
-      // Хуучин формат: _score
+      // Хуучин формат: C1.Шалгуур 1_score
       else if (row[`${k}_score`] !== undefined && row[`${k}_score`] !== "") {
         criterionTotals[k] = Number(row[`${k}_score`]);
       }
-    }
-    // JSON string fallback (дундын формат)
+      // _оноо формат
+      else if (row[`${k}_оноо`] !== undefined && row[`${k}_оноо`] !== "") {
+        criterionTotals[k] = Number(row[`${k}_оноо`]);
+      }
+    });
+    // JSON string fallback
     if (Object.keys(criterionTotals).length === 0 && row.criterionTotals) {
       let ct = row.criterionTotals;
       if (typeof ct === "string") { try { ct = JSON.parse(ct); } catch { ct = {}; } }
