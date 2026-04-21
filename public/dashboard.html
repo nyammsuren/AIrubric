@@ -200,7 +200,37 @@
 
 <script>
   let allEvals = [];
+  let groupedEvals = [];
   let adminToken = localStorage.getItem("adminToken") || "";
+
+  function groupByCourse(evals) {
+    const map = {};
+    for (const e of evals) {
+      const key = (e.courseCode || "—").trim();
+      if (!map[key]) map[key] = [];
+      map[key].push(e);
+    }
+    return Object.entries(map).map(([courseCode, rows]) => {
+      const n = rows.length;
+      const avgPercent = Math.round(rows.reduce((s, r) => s + r.percent, 0) / n);
+      const avgTotal   = Math.round(rows.reduce((s, r) => s + r.totalScore, 0) / n);
+      const maxScore   = rows[0].maxScore || 72;
+      const evalDate   = rows.map(r => r.evalDate).sort().reverse()[0] || "";
+      const evaluators = [...new Set(rows.map(r => r.evaluator).filter(Boolean))];
+
+      const criterionTotals = {};
+      for (const k of CRITERION_SHEET_KEYS) {
+        const vals = rows.map(r => Number((r.criterionTotals || {})[k] || 0));
+        criterionTotals[k] = Math.round(vals.reduce((s, v) => s + v, 0) / n * 10) / 10;
+      }
+      const advice = rows.map(r => r.overallAiAdvice || "")
+        .filter(a => a.length > 10).sort((a, b) => b.length - a.length)[0] || "";
+
+      return { id: courseCode, courseCode, count: n, totalScore: avgTotal,
+               maxScore, percent: avgPercent, evalDate, evaluators,
+               criterionTotals, overallAiAdvice: advice, rows };
+    }).sort((a, b) => b.percent - a.percent);
+  }
 
   // AUTH
   async function tryLogin() {
@@ -243,96 +273,104 @@
     return '<span class="badge badge-red">Сайжруулах</span>';
   }
 
-  function renderStats(evals) {
-    document.getElementById("statTotal").textContent = evals.length;
-    if (!evals.length) {
+  const CRITERION_NAMES = {
+    "C1.Шалгуур 1": "Зорилго, үр дүн, үнэлгээний уялдаа",
+    "C2.Шалгуур 2": "Агуулгын чанар",
+    "C3.Шалгуур 3": "Сургалтын дизайн",
+    "C4.Шалгуур 4": "Харилцаа ба оролцоо",
+    "C5.Шалгуур 5": "Үнэлгээ ба эргэх холбоо",
+    "C6.Шалгуур 6": "Технологи ба хүртээмж"
+  };
+
+  function renderStats(groups) {
+    document.getElementById("statTotal").textContent = groups.length;
+    if (!groups.length) {
       document.getElementById("statAvg").textContent = "—";
       document.getElementById("statTop").textContent = "—";
       document.getElementById("statLow").textContent = "—";
       return;
     }
-    const avg = Math.round(evals.reduce((s, e) => s + e.percent, 0) / evals.length);
+    const avg = Math.round(groups.reduce((s, e) => s + e.percent, 0) / groups.length);
     document.getElementById("statAvg").textContent = avg + "%";
-    document.getElementById("statTop").textContent = evals.filter(e => e.percent >= 90).length;
-    document.getElementById("statLow").textContent = evals.filter(e => e.percent < 60).length;
+    document.getElementById("statTop").textContent = groups.filter(e => e.percent >= 90).length;
+    document.getElementById("statLow").textContent = groups.filter(e => e.percent < 60).length;
   }
 
-  function renderTable(evals) {
+  function renderTable(groups) {
     const tbody = document.getElementById("tableBody");
     const empty = document.getElementById("emptyState");
-    document.getElementById("countLabel").textContent = `${evals.length} үнэлгээ`;
+    document.getElementById("countLabel").textContent = `${groups.length} хичээл`;
 
-    if (!evals.length) {
-      tbody.innerHTML = "";
-      empty.style.display = "block";
-      return;
-    }
+    if (!groups.length) { tbody.innerHTML = ""; empty.style.display = "block"; return; }
     empty.style.display = "none";
-    tbody.innerHTML = evals.map(e => `
+    tbody.innerHTML = groups.map(g => `
       <tr>
-        <td><strong>${e.courseCode || "—"}</strong></td>
-        <td style="color:var(--muted)">${e.evalDate || "—"}</td>
-        <td style="color:var(--muted)">${e.evaluator || "—"}</td>
-        <td>
-          <div style="font-weight:800">${e.totalScore}/${e.maxScore}</div>
-          <div class="score-bar"><div style="width:${e.percent}%"></div></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">${e.percent}%</div>
+        <td><strong>${g.courseCode || "—"}</strong></td>
+        <td style="color:var(--muted)">${g.evalDate || "—"}</td>
+        <td style="color:var(--muted)">
+          ${g.count > 1 ? `<span style="background:#eef3ff;color:#315efb;border-radius:999px;padding:2px 8px;font-size:12px;font-weight:700;">${g.count} үнэлгээ</span>` : g.evaluators[0] || "—"}
         </td>
-        <td>${qualityBadge(e.percent)}</td>
-        <td><button class="btn" style="background:var(--primary-soft);color:var(--primary);padding:6px 12px;font-size:12px" onclick="openDetail(${e.id})">Дэлгэрэнгүй</button></td>
+        <td>
+          <div style="font-weight:800">${g.totalScore}/${g.maxScore}${g.count > 1 ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">дундаж</span>' : ''}</div>
+          <div class="score-bar"><div style="width:${g.percent}%"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${g.percent}%</div>
+        </td>
+        <td>${qualityBadge(g.percent)}</td>
+        <td><button class="btn" style="background:var(--primary-soft);color:var(--primary);padding:6px 12px;font-size:12px" onclick="openDetail('${encodeURIComponent(g.courseCode)}')">Дэлгэрэнгүй</button></td>
       </tr>`).join("");
   }
 
-  function openDetail(id) {
-    const e = allEvals.find(x => x.id === id);
-    if (!e) return;
-    document.getElementById("detailTitle").textContent = e.courseCode || "Хичээл";
+  function openDetail(encodedCode) {
+    const courseCode = decodeURIComponent(encodedCode);
+    const g = groupedEvals.find(x => x.courseCode === courseCode);
+    if (!g) return;
+    document.getElementById("detailTitle").textContent = g.courseCode || "Хичээл";
     const body = document.getElementById("detailBody");
 
-    const criterionNames = {
-      "C1.Шалгуур 1": "Зорилго, үр дүн, үнэлгээний уялдаа",
-      "C2.Шалгуур 2": "Агуулгын чанар",
-      "C3.Шалгуур 3": "Сургалтын дизайн",
-      "C4.Шалгуур 4": "Харилцаа ба оролцоо",
-      "C5.Шалгуур 5": "Үнэлгээ ба эргэх холбоо",
-      "C6.Шалгуур 6": "Технологи ба хүртээмж"
-    };
-
-    const scoresHtml = Object.entries(e.criterionTotals || {}).map(([k, v]) => `
-      <div class="detail-score-item">
-        <div class="ds-title">${criterionNames[k] || k}</div>
+    const scoresHtml = CRITERION_SHEET_KEYS.map(k => {
+      const v = g.criterionTotals[k] || 0;
+      return `<div class="detail-score-item">
+        <div class="ds-title">${CRITERION_NAMES[k] || k}</div>
         <div class="ds-val">${v}/12</div>
         <div class="score-bar" style="margin-top:6px"><div style="width:${Math.round(v/12*100)}%"></div></div>
-      </div>`).join("");
+      </div>`;
+    }).join("");
+
+    const indivHtml = g.count > 1 ? `
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--muted)">ТУСДАА ҮНЭЛГЭЭНҮҮД (${g.count})</div>
+        ${g.rows.map((r, i) => `
+          <div style="background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--muted)">${r.evaluator || `Үнэлгээч ${i+1}`} · ${r.evalDate || ""}</span>
+            <span style="font-weight:800;font-size:15px">${r.totalScore}/${r.maxScore} <span style="font-size:12px;color:var(--muted)">(${r.percent}%)</span></span>
+            ${qualityBadge(r.percent)}
+          </div>`).join("")}
+      </div>` : "";
 
     body.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div style="background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:12px;color:var(--muted)">Нийт оноо</div>
-          <div style="font-size:28px;font-weight:900">${e.totalScore}/${e.maxScore}</div>
+          <div style="font-size:12px;color:var(--muted)">${g.count > 1 ? "Дундаж оноо" : "Нийт оноо"}</div>
+          <div style="font-size:28px;font-weight:900">${g.totalScore}/${g.maxScore}</div>
         </div>
         <div style="background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center">
           <div style="font-size:12px;color:var(--muted)">Хувь</div>
-          <div style="font-size:28px;font-weight:900">${e.percent}%</div>
+          <div style="font-size:28px;font-weight:900">${g.percent}%</div>
         </div>
         <div style="background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center">
-          <div style="font-size:12px;color:var(--muted)">Огноо</div>
-          <div style="font-size:16px;font-weight:800;margin-top:6px">${e.evalDate}</div>
+          <div style="font-size:12px;color:var(--muted)">Үнэлгээний тоо</div>
+          <div style="font-size:28px;font-weight:900">${g.count}</div>
         </div>
       </div>
       <div>
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--muted)">ШАЛГУУР ТУСБҮРИЙН ОНОО</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--muted)">ШАЛГУУР ТУСБҮРИЙН ДУНДАЖ ОНОО</div>
         <div class="detail-scores">${scoresHtml}</div>
       </div>
-      ${e.overallAiAdvice ? `
+      ${indivHtml}
+      ${g.overallAiAdvice ? `
       <div style="background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:14px">
         <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">🤖 НЭГДСЭН ЗӨВЛӨМЖ</div>
-        <div style="font-size:14px;line-height:1.7;white-space:pre-line">${e.overallAiAdvice}</div>
-      </div>` : ""}
-      ${e.evidenceSummary && e.evidenceSummary.length ? `
-      <div style="background:#f8faff;border:1px solid var(--line);border-radius:14px;padding:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📋 AI НОТОЛГООНЫ ТОВЧ ДҮГНЭЛТ</div>
-        ${e.evidenceSummary.map(item => `<div style="font-size:13px;line-height:1.6;padding:6px 0;border-bottom:1px solid #edf1f7;">• ${item}</div>`).join("")}
+        <div style="font-size:14px;line-height:1.7;white-space:pre-line">${g.overallAiAdvice}</div>
       </div>` : ""}`;
 
     document.getElementById("detailOverlay").classList.add("open");
@@ -348,15 +386,15 @@
   function applyFilter() {
     const q = document.getElementById("searchInput").value.toLowerCase();
     const f = document.getElementById("filterSelect").value;
-    let filtered = allEvals.filter(e => {
-      const matchSearch = (e.courseCode || "").toLowerCase().includes(q) ||
-                          (e.evaluator || "").toLowerCase().includes(q);
+    const filtered = groupedEvals.filter(g => {
+      const matchSearch = (g.courseCode || "").toLowerCase().includes(q) ||
+                          g.evaluators.join(" ").toLowerCase().includes(q);
       const matchFilter =
         !f ? true :
-        f === "top"  ? e.percent >= 90 :
-        f === "good" ? e.percent >= 75 && e.percent < 90 :
-        f === "mid"  ? e.percent >= 60 && e.percent < 75 :
-        f === "low"  ? e.percent < 60 : true;
+        f === "top"  ? g.percent >= 90 :
+        f === "good" ? g.percent >= 75 && g.percent < 90 :
+        f === "mid"  ? g.percent >= 60 && g.percent < 75 :
+        f === "low"  ? g.percent < 60 : true;
       return matchSearch && matchFilter;
     });
     renderTable(filtered);
@@ -449,8 +487,9 @@
     // Sheets өгөгдөл байвал тэрийг л ашигла, үгүй бол server memory
     allEvals = sheetEvals.length > 0 ? sheetEvals : memEvals;
 
-    renderStats(allEvals);
-    renderTable(allEvals);
+    groupedEvals = groupByCourse(allEvals);
+    renderStats(groupedEvals);
+    renderTable(groupedEvals);
     renderCharts(allEvals);
   }
 
