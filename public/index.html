@@ -289,6 +289,9 @@
         </div>
         <button class="btn btn-edit" id="toggleToolsBtn" style="font-size:18px;padding:8px 12px;">⚙️</button>
       </div>
+      <div style="position:absolute;top:24px;left:24px;">
+        <a href="/dashboard.html" style="color:rgba(255,255,255,.85);font-size:13px;text-decoration:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:6px 12px;border-radius:10px;">📊 Дашбоард</a>
+      </div>
       <h1>Онлайн сургалтыг үнэлэх НН шалгуур</h1>
       <p>Онлайн сургалтыг үнэлэх интерактив үнэлгээний хэрэгсэл</p>
       <p>Нийт дээд оноо: <strong>72</strong> | Шалгуур тус бүрийн дээд оноо: <strong>12</strong></p>
@@ -1048,8 +1051,21 @@
         showStatus(`Бүх үзүүлэлтийг үнэлнэ үү. Үлдсэн: ${unscored.length}`, false);
         return;
       }
-      await submitToGoogleSheet(payload);
-      showStatus("Хадгалах хүсэлт илгээгдлээ.", true);
+      try {
+        const res = await fetch("/api/evaluations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showStatus("Үнэлгээ амжилттай хадгалагдлаа.", true);
+        } else {
+          showStatus(data.message || "Хадгалахад алдаа гарлаа.", false);
+        }
+      } catch {
+        showStatus("Серверт холбогдож чадсангүй.", false);
+      }
     }
 
     document.getElementById("submitBtn").addEventListener("click", submitEvaluation);

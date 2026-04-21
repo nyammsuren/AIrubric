@@ -342,6 +342,55 @@ app.post("/api/canvas/analyze-course", async (req, res) => {
   }
 });
 
+// ===== EVALUATIONS STORE =====
+const evaluations = [];
+
+app.post("/api/evaluations", async (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || !payload.courseCode) {
+      return res.status(400).json({ ok: false, message: "Мэдээлэл дутуу байна." });
+    }
+
+    const entry = {
+      id: Date.now(),
+      courseCode: payload.courseCode,
+      evaluator: payload.evaluator || "",
+      evalDate: payload.evalDate || new Date().toISOString().split("T")[0],
+      totalScore: payload.totalScore ?? 0,
+      maxScore: payload.maxScore ?? 72,
+      percent: payload.percent ?? 0,
+      quality: payload.quality || "",
+      overallAiAdvice: payload.overallAiAdvice || "",
+      criterionTotals: payload.criterionTotals || {},
+      scores: payload.scores || {},
+      submittedAt: new Date().toISOString()
+    };
+
+    evaluations.unshift(entry);
+    if (evaluations.length > 200) evaluations.pop();
+
+    // Google Sheets руу дамжуулах
+    const googleUrl = process.env.GOOGLE_SCRIPT_URL;
+    if (googleUrl) {
+      fetch(googleUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }
+
+    res.json({ ok: true, id: entry.id });
+  } catch (error) {
+    res.status(500).json({ ok: false, message: error.message });
+  }
+});
+
+app.get("/api/evaluations", (req, res) => {
+  res.json({ ok: true, evaluations });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

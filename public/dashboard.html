@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Дашбоард — НН Рубрик</title>
+  <style>
+    :root {
+      --bg:#f6f8fc; --card:#fff; --line:#e6ebf3; --text:#172033;
+      --muted:#64748b; --primary:#315efb; --primary-soft:#eef3ff;
+      --green:#16a34a; --amber:#f59e0b; --red:#ef4444;
+      --shadow:0 10px 28px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+
+    .hero{
+      background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);
+      color:#fff;border-radius:24px;padding:24px 28px;
+      box-shadow:var(--shadow);margin-bottom:24px;
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+    }
+    .hero h1{margin:0;font-size:26px}
+    .hero p{margin:6px 0 0;color:rgba(255,255,255,.85);font-size:14px}
+    .btn{border:none;cursor:pointer;border-radius:12px;padding:10px 18px;font-weight:700;font-size:14px;transition:.2s}
+    .btn-white{background:#fff;color:#2242bb}
+    .btn-white:hover{transform:translateY(-1px)}
+
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+    .stat-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px 20px;box-shadow:var(--shadow)}
+    .stat-card .label{font-size:13px;color:var(--muted);margin-bottom:8px}
+    .stat-card .value{font-size:32px;font-weight:900;color:var(--text)}
+    .stat-card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+    .card-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+    .card-head h2{margin:0;font-size:18px}
+
+    .search-bar{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;gap:10px}
+    .search-bar input{flex:1;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;outline:none}
+    .search-bar input:focus{border-color:var(--primary)}
+    .search-bar select{border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;outline:none;background:#fff}
+
+    table{width:100%;border-collapse:collapse}
+    th{padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--muted);background:#f8faff;border-bottom:1px solid var(--line)}
+    td{padding:14px 16px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#f8faff}
+
+    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .badge-green{background:#eaf8f0;color:#16a34a}
+    .badge-blue{background:#eef3ff;color:#315efb}
+    .badge-amber{background:#fff7e8;color:#b7791f}
+    .badge-red{background:#fff0f0;color:#c0392b}
+
+    .score-bar{height:7px;background:#edf1f7;border-radius:999px;overflow:hidden;margin-top:5px;min-width:80px}
+    .score-bar div{height:100%;background:linear-gradient(90deg,#315efb,#6a8cff);border-radius:999px}
+
+    .empty{padding:48px;text-align:center;color:var(--muted)}
+    .empty svg{width:48px;height:48px;margin-bottom:12px;opacity:.3}
+
+    .detail-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.5);z-index:100;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+    .detail-overlay.open{display:flex}
+    .detail-modal{background:#fff;border-radius:24px;width:100%;max-width:720px;margin:auto;box-shadow:0 24px 64px rgba(10,20,50,.2)}
+    .detail-head{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+    .detail-head h2{margin:0;font-size:18px}
+    .detail-close{background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted);padding:4px 8px;border-radius:8px}
+    .detail-close:hover{background:#f1f4fb}
+    .detail-body{padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+    .detail-scores{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .detail-score-item{background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}
+    .detail-score-item .ds-title{color:var(--muted);margin-bottom:4px}
+    .detail-score-item .ds-val{font-weight:800;font-size:16px;color:var(--primary)}
+
+    @media(max-width:900px){.stats{grid-template-columns:1fr 1fr}}
+    @media(max-width:600px){.stats{grid-template-columns:1fr};.detail-scores{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <h1>Үнэлгээний дашбоард</h1>
+      <p>Бүх хичээлийн үнэлгээний нэгтгэл</p>
+    </div>
+    <a href="/" class="btn btn-white">← Үнэлгээ хийх</a>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Нийт үнэлгээ</div>
+      <div class="value" id="statTotal">—</div>
+      <div class="sub">Бүх хичээл</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Дундаж оноо</div>
+      <div class="value" id="statAvg">—</div>
+      <div class="sub">72-оос</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Жишиг хичээл</div>
+      <div class="value" id="statTop">—</div>
+      <div class="sub">90%+ оноо</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Сайжруулах шаардлагатай</div>
+      <div class="value" id="statLow">—</div>
+      <div class="sub">60%-аас доош</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Хичээлүүд</h2>
+      <span id="countLabel" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+    <div class="search-bar">
+      <input id="searchInput" placeholder="Хичээл хайх..." />
+      <select id="filterSelect">
+        <option value="">Бүгд</option>
+        <option value="top">Жишиг (90%+)</option>
+        <option value="good">Сайн (75–89%)</option>
+        <option value="mid">Дунд (60–74%)</option>
+        <option value="low">Сул (&lt;60%)</option>
+      </select>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Хичээл</th>
+          <th>Огноо</th>
+          <th>Үнэлгээч</th>
+          <th>Оноо</th>
+          <th>Чанар</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div id="emptyState" class="empty" style="display:none">
+      <div>Үнэлгээ байхгүй байна</div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-modal">
+    <div class="detail-head">
+      <h2 id="detailTitle">—</h2>
+      <button class="detail-close" id="detailClose">✕</button>
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+  </div>
+</div>
+
+<script>
+  let allEvals = [];
+
+  function qualityBadge(percent) {
+    if (percent >= 90) return '<span class="badge badge-green">Жишиг хичээл</span>';
+    if (percent >= 75) return '<span class="badge badge-blue">Бага засвар</span>';
+    if (percent >= 60) return '<span class="badge badge-amber">Дунд засвар</span>';
+    return '<span class="badge badge-red">Сайжруулах</span>';
+  }
+
+  function renderStats(evals) {
+    document.getElementById("statTotal").textContent = evals.length;
+    if (!evals.length) {
+      document.getElementById("statAvg").textContent = "—";
+      document.getElementById("statTop").textContent = "—";
+      document.getElementById("statLow").textContent = "—";
+      return;
+    }
+    const avg = Math.round(evals.reduce((s, e) => s + e.percent, 0) / evals.length);
+    document.getElementById("statAvg").textContent = avg + "%";
+    document.getElementById("statTop").textContent = evals.filter(e => e.percent >= 90).length;
+    document.getElementById("statLow").textContent = evals.filter(e => e.percent < 60).length;
+  }
+
+  function renderTable(evals) {
+    const tbody = document.getElementById("tableBody");
+    const empty = document.getElementById("emptyState");
+    document.getElementById("countLabel").textContent = `${evals.length} үнэлгээ`;
+
+    if (!evals.length) {
+      tbody.innerHTML = "";
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+    tbody.innerHTML = evals.map(e => `
+      <tr>
+        <td><strong>${e.courseCode || "—"}</strong></td>
+        <td style="color:var(--muted)">${e.evalDate || "—"}</td>
+        <td style="color:var(--muted)">${e.evaluator || "—"}</td>
+        <td>
+          <div style="font-weight:800">${e.totalScore}/${e.maxScore}</div>
+          <div class="score-bar"><div style="width:${e.percent}%"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">${e.percent}%</div>
+        </td>
+        <td>${qualityBadge(e.percent)}</td>
+        <td><button class="btn" style="background:var(--primary-soft);color:var(--primary);padding:6px 12px;font-size:12px" onclick="openDetail(${e.id})">Дэлгэрэнгүй</button></td>
+      </tr>`).join("");
+  }
+
+  function openDetail(id) {
+    const e = allEvals.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById("detailTitle").textContent = e.courseCode || "Хичээл";
+    const body = document.getElementById("detailBody");
+
+    const criterionNames = {
+      "C1.Шалгуур 1": "Зорилго, үр дүн, үнэлгээний уялдаа",
+      "C2.Шалгуур 2": "Агуулгын чанар",
+      "C3.Шалгуур 3": "Сургалтын дизайн",
+      "C4.Шалгуур 4": "Харилцаа ба оролцоо",
+      "C5.Шалгуур 5": "Үнэлгээ ба эргэх холбоо",
+      "C6.Шалгуур 6": "Технологи ба хүртээмж"
+    };
+
+    const scoresHtml = Object.entries(e.criterionTotals || {}).map(([k, v]) => `
+      <div class="detail-score-item">
+        <div class="ds-title">${criterionNames[k] || k}</div>
+        <div class="ds-val">${v}/12</div>
+        <div class="score-bar" style="margin-top:6px"><div style="width:${Math.round(v/12*100)}%"></div></div>
+      </div>`).join("");
+
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div style="background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:12px;color:var(--muted)">Нийт оноо</div>
+          <div style="font-size:28px;font-weight:900">${e.totalScore}/${e.maxScore}</div>
+        </div>
+        <div style="background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:12px;color:var(--muted)">Хувь</div>
+          <div style="font-size:28px;font-weight:900">${e.percent}%</div>
+        </div>
+        <div style="background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:12px;color:var(--muted)">Огноо</div>
+          <div style="font-size:16px;font-weight:800;margin-top:6px">${e.evalDate}</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--muted)">ШАЛГУУР ТУСБҮРИЙН ОНОО</div>
+        <div class="detail-scores">${scoresHtml}</div>
+      </div>
+      ${e.overallAiAdvice ? `
+      <div style="background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">🤖 НЭГДСЭН ЗӨВЛӨМЖ</div>
+        <div style="font-size:14px;line-height:1.7;white-space:pre-line">${e.overallAiAdvice}</div>
+      </div>` : ""}`;
+
+    document.getElementById("detailOverlay").classList.add("open");
+  }
+
+  document.getElementById("detailClose").addEventListener("click", () => {
+    document.getElementById("detailOverlay").classList.remove("open");
+  });
+  document.getElementById("detailOverlay").addEventListener("click", function(e) {
+    if (e.target === this) this.classList.remove("open");
+  });
+
+  function applyFilter() {
+    const q = document.getElementById("searchInput").value.toLowerCase();
+    const f = document.getElementById("filterSelect").value;
+    let filtered = allEvals.filter(e => {
+      const matchSearch = (e.courseCode || "").toLowerCase().includes(q) ||
+                          (e.evaluator || "").toLowerCase().includes(q);
+      const matchFilter =
+        !f ? true :
+        f === "top"  ? e.percent >= 90 :
+        f === "good" ? e.percent >= 75 && e.percent < 90 :
+        f === "mid"  ? e.percent >= 60 && e.percent < 75 :
+        f === "low"  ? e.percent < 60 : true;
+      return matchSearch && matchFilter;
+    });
+    renderTable(filtered);
+  }
+
+  document.getElementById("searchInput").addEventListener("input", applyFilter);
+  document.getElementById("filterSelect").addEventListener("change", applyFilter);
+
+  async function load() {
+    try {
+      const res = await fetch("/api/evaluations");
+      const data = await res.json();
+      if (data.ok) {
+        allEvals = data.evaluations;
+        renderStats(allEvals);
+        renderTable(allEvals);
+      }
+    } catch {
+      document.getElementById("emptyState").style.display = "block";
+      document.getElementById("emptyState").textContent = "Серверт холбогдож чадсангүй.";
+    }
+  }
+
+  load();
+</script>
+</body>
+</html>
