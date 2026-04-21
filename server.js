@@ -412,6 +412,7 @@ app.post("/api/evaluations", async (req, res) => {
       percent: payload.percent ?? 0,
       quality: payload.quality || "",
       overallAiAdvice: payload.overallAiAdvice || "",
+      evidenceSummary: Array.isArray(payload.evidenceSummary) ? payload.evidenceSummary : [],
       criterionTotals: payload.criterionTotals || {},
       scores: payload.scores || {},
       submittedAt: new Date().toISOString()

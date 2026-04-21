@@ -361,15 +361,10 @@
             padding:14px;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
         </div>
 
-        <div class="card evidence-card">
-          <h3 style="margin:0 0 10px;font-size:22px;">AI нотолгооны товч дүгнэлт</h3>
-          <div id="evidenceSummaryBox">
-            <div class="evidence-item">Одоогоор нотолгоо хараахан гараагүй байна.</div>
-          </div>
-          <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
-            <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
-            <div id="statusBoxBottom" class="status"></div>
-          </div>
+        <div class="card" style="padding:18px 20px;">
+          <div id="evidenceSummaryBox" style="display:none;"></div>
+          <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
+          <div id="statusBoxBottom" class="status"></div>
         </div>
 
       </aside>
@@ -626,7 +621,7 @@
       } catch(e) {}
     })();
 
-    const state = { scores: {}, reasons: {} };
+    const state = { scores: {}, reasons: {}, evidenceSummary: [] };
 
     const criteriaEl = document.getElementById("criteria");
     const barsEl = document.getElementById("bars");
@@ -1017,6 +1012,7 @@
         criterionTotals: Object.fromEntries(rubric.map(c => [c.id, criterionTotal(c)])),
         criterionPercents: Object.fromEntries(rubric.map(c => [c.id, Math.round((criterionTotal(c)/c.max)*100)])),
         scores: state.scores,
+        evidenceSummary: state.evidenceSummary,
         exportedAt: new Date().toISOString()
       };
     }
@@ -1096,6 +1092,7 @@
       const aiScores = normalizeAiScores(result.aiScores);
       Object.entries(aiScores).forEach(([key, value]) => { state.scores[key] = value; });
       state.reasons = result.reasons || {};
+      state.evidenceSummary = result.evidenceSummary || [];
       if (result.courseTitle) document.getElementById("courseCode").value = result.courseTitle;
       if (result.courseId) document.getElementById("canvasCourseId").value = String(result.courseId);
       if (result.overallAdvice) overallAiTextEl.value = result.overallAdvice;

@@ -312,6 +312,11 @@
       <div style="background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:14px">
         <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px">🤖 НЭГДСЭН ЗӨВЛӨМЖ</div>
         <div style="font-size:14px;line-height:1.7;white-space:pre-line">${e.overallAiAdvice}</div>
+      </div>` : ""}
+      ${e.evidenceSummary && e.evidenceSummary.length ? `
+      <div style="background:#f8faff;border:1px solid var(--line);border-radius:14px;padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">📋 AI НОТОЛГООНЫ ТОВЧ ДҮГНЭЛТ</div>
+        ${e.evidenceSummary.map(item => `<div style="font-size:13px;line-height:1.6;padding:6px 0;border-bottom:1px solid #edf1f7;">• ${item}</div>`).join("")}
       </div>` : ""}`;
 
     document.getElementById("detailOverlay").classList.add("open");
