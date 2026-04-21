@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Дашбоард — НН Рубрик</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --bg:#f6f8fc; --card:#fff; --line:#e6ebf3; --text:#172033;
@@ -73,7 +74,12 @@
     .detail-score-item .ds-title{color:var(--muted);margin-bottom:4px}
     .detail-score-item .ds-val{font-weight:800;font-size:16px;color:var(--primary)}
 
-    @media(max-width:900px){.stats{grid-template-columns:1fr 1fr}}
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+    .chart-card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:20px}
+    .chart-card h3{margin:0 0 16px;font-size:16px;color:var(--text)}
+    .chart-wrap{position:relative;height:260px}
+
+    @media(max-width:900px){.stats{grid-template-columns:1fr 1fr};.charts-grid{grid-template-columns:1fr}}
     @media(max-width:600px){.stats{grid-template-columns:1fr};.detail-scores{grid-template-columns:1fr 1fr}}
     /* LOGIN */
     .login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);display:flex;align-items:center;justify-content:center;z-index:999;}
@@ -133,6 +139,17 @@
       <div class="label">Сайжруулах шаардлагатай</div>
       <div class="value" id="statLow">—</div>
       <div class="sub">60%-аас доош</div>
+    </div>
+  </div>
+
+  <div class="charts-grid" id="chartsSection" style="display:none">
+    <div class="chart-card">
+      <h3>📊 Шалгуур тусбүрийн дундаж оноо</h3>
+      <div class="chart-wrap"><canvas id="criterionChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>🎯 Чанарын хуваарилалт</h3>
+      <div class="chart-wrap"><canvas id="qualityChart"></canvas></div>
     </div>
   </div>
 
@@ -217,6 +234,7 @@
     document.getElementById("loginOverlay").style.display = "none";
     document.getElementById("mainContent").style.display = "block";
     load();
+    loadCharts();
   }
 
   function qualityBadge(percent) {
@@ -385,6 +403,100 @@
 
   document.getElementById("editRubricBtn").addEventListener("click", () => openAdminPage("rubric"));
   document.getElementById("aiEvalBtn").addEventListener("click", () => openAdminPage("ai"));
+
+  // ===== CHARTS =====
+  let criterionChartInstance = null;
+  let qualityChartInstance = null;
+
+  const CRITERION_LABELS = [
+    "C1: Зорилго", "C2: Агуулга", "C3: Дизайн",
+    "C4: Харилцаа", "C5: Үнэлгээ", "C6: Технологи"
+  ];
+  const CRITERION_KEYS = ["C1.Шалгуур 1","C2.Шалгуур 2","C3.Шалгуур 3","C4.Шалгуур 4","C5.Шалгуур 5","C6.Шалгуур 6"];
+
+  async function loadCharts() {
+    try {
+      const res = await fetch("/api/sheet-data", {
+        headers: { "Authorization": `Bearer ${adminToken}` }
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json.ok || !Array.isArray(json.data) || json.data.length === 0) return;
+
+      const rows = json.data;
+
+      // Шалгуур тусбүрийн дундаж
+      const criterionSums = Object.fromEntries(CRITERION_KEYS.map(k => [k, 0]));
+      let count = 0;
+      for (const row of rows) {
+        let totals = row.criterionTotals;
+        if (typeof totals === "string") {
+          try { totals = JSON.parse(totals); } catch { continue; }
+        }
+        if (!totals || typeof totals !== "object") continue;
+        for (const k of CRITERION_KEYS) {
+          criterionSums[k] += Number(totals[k] || 0);
+        }
+        count++;
+      }
+      const criterionAvgs = CRITERION_KEYS.map(k => count ? Math.round((criterionSums[k] / count) * 10) / 10 : 0);
+
+      // Чанарын хуваарилалт
+      let top=0, good=0, mid=0, low=0;
+      for (const row of rows) {
+        const p = Number(row.percent || 0);
+        if (p >= 90) top++;
+        else if (p >= 75) good++;
+        else if (p >= 60) mid++;
+        else low++;
+      }
+
+      document.getElementById("chartsSection").style.display = "grid";
+
+      if (criterionChartInstance) criterionChartInstance.destroy();
+      criterionChartInstance = new Chart(document.getElementById("criterionChart"), {
+        type: "bar",
+        data: {
+          labels: CRITERION_LABELS,
+          datasets: [{
+            label: "Дундаж оноо (12-оос)",
+            data: criterionAvgs,
+            backgroundColor: "rgba(49,94,251,0.75)",
+            borderRadius: 8,
+            borderSkipped: false
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, max: 12, grid: { color: "#edf1f7" } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+
+      if (qualityChartInstance) qualityChartInstance.destroy();
+      qualityChartInstance = new Chart(document.getElementById("qualityChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Жишиг (90%+)", "Сайн (75–89%)", "Дунд (60–74%)", "Сул (<60%)"],
+          datasets: [{
+            data: [top, good, mid, low],
+            backgroundColor: ["#16a34a","#315efb","#f59e0b","#ef4444"],
+            borderWidth: 2, borderColor: "#fff"
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: "bottom", labels: { padding: 14, font: { size: 12 } } }
+          }
+        }
+      });
+
+    } catch { /* График ачаалахад алдаа гарлаа */ }
+  }
 
   // Хэрэв token байвал шууд dashboard харуулах
   if (adminToken) {

@@ -12,6 +12,8 @@ app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
+const GOOGLE_SCRIPT_URL = (process.env.GOOGLE_SCRIPT_URL || "").replace(/\/$/, "");
+const GOOGLE_SHEET_KEY = process.env.GOOGLE_SHEET_KEY || "";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
@@ -440,6 +442,24 @@ app.post("/api/evaluations", async (req, res) => {
 
 app.get("/api/evaluations", requireAdmin, (req, res) => {
   res.json({ ok: true, evaluations });
+});
+
+app.get("/api/sheet-data", requireAdmin, async (req, res) => {
+  try {
+    if (!GOOGLE_SCRIPT_URL || !GOOGLE_SHEET_KEY) {
+      return res.status(400).json({ ok: false, message: "Google Sheets тохируулагдаагүй." });
+    }
+    const url = `${GOOGLE_SCRIPT_URL}?key=${encodeURIComponent(GOOGLE_SHEET_KEY)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.status === "success") {
+      res.json({ ok: true, data: data.data });
+    } else {
+      res.status(500).json({ ok: false, message: data.message || "Google Sheets алдаа." });
+    }
+  } catch (error) {
+    res.status(500).json({ ok: false, message: error.message });
+  }
 });
 
 app.listen(PORT, () => {
