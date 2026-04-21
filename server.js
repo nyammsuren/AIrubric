@@ -263,7 +263,8 @@ ${evidenceText}
 
   const response = await openai.responses.create({
     model: OPENAI_MODEL,
-    input: prompt
+    input: prompt,
+    temperature: 0
   });
 
   let text = (response.output_text || "").trim();
