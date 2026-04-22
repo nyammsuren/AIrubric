@@ -124,7 +124,7 @@ function truncateText(text, max = 18000) {
 
 async function getCourseBundle(instance, courseId) {
   const [course, modules, assignments, discussions] = await Promise.all([
-    canvasGet(instance, `/api/v1/courses/${courseId}`, { include: ["syllabus_body", "term"] }),
+    canvasGet(instance, `/api/v1/courses/${courseId}`, { include: ["syllabus_body", "term"] }).catch(() => ({ id: courseId })),
     canvasGet(instance, `/api/v1/courses/${courseId}/modules`, { per_page: 100, include: ["items"] }).catch(() => []),
     canvasGet(instance, `/api/v1/courses/${courseId}/assignments`, { per_page: 100, include: ["rubric"] }).catch(() => []),
     canvasGet(instance, `/api/v1/courses/${courseId}/discussion_topics`, { per_page: 100 }).catch(() => [])
@@ -366,7 +366,6 @@ app.get("/api/canvas/courses", async (req, res) => {
     const data = await canvasGet(instance, "/api/v1/courses", {
       per_page: 100,
       search_term: req.query.search || "",
-      enrollment_type: "teacher",
       state: ["available"]
     });
     res.json({ ok: true, courses: data.map(c => ({ id: c.id, name: c.name, course_code: c.course_code })) });
