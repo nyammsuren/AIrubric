@@ -91,6 +91,26 @@
     .login-box button{width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
     .login-box button:hover{background:#2242bb}
     .login-err{color:#ef4444;font-size:13px;margin-top:8px;display:none}
+    /* BATCH MODAL */
+    .batch-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.5);z-index:200;align-items:center;justify-content:center;}
+    .batch-overlay.open{display:flex}
+    .batch-modal{background:#fff;border-radius:24px;width:100%;max-width:480px;padding:28px 32px;box-shadow:0 24px 64px rgba(10,20,50,.2)}
+    .batch-modal h2{margin:0 0 6px;font-size:20px}
+    .batch-modal p{margin:0 0 20px;color:var(--muted);font-size:14px}
+    .batch-modal select,.batch-modal input{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px;outline:none;margin-bottom:12px;font-family:inherit;background:#fff}
+    .batch-modal select:focus,.batch-modal input:focus{border-color:var(--primary)}
+    .batch-progress{background:#f1f4fb;border-radius:12px;padding:14px 16px;margin-bottom:16px;display:none}
+    .batch-progress-bar{height:8px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:10px 0 6px}
+    .batch-progress-bar div{height:100%;background:linear-gradient(90deg,#315efb,#6a8cff);border-radius:999px;transition:width .4s}
+    .batch-progress-text{font-size:13px;color:var(--muted)}
+    .batch-log{max-height:180px;overflow-y:auto;font-size:12px;color:var(--muted);margin-top:8px;line-height:1.8}
+    .batch-log .ok{color:var(--green)}
+    .batch-log .err{color:var(--red)}
+    .batch-actions{display:flex;gap:10px;margin-top:4px}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:#2242bb}
+    .btn-ghost{background:#f1f4fb;color:var(--text)}
+    .btn-ghost:hover{background:#e2e8f0}
   </style>
 </head>
 <body>
@@ -115,6 +135,7 @@
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-white" id="editRubricBtn">✏️ Рубрик засах</button>
       <button class="btn btn-white" id="aiEvalBtn">🤖 AI үнэлгээ</button>
+      <button class="btn btn-white" id="batchEvalBtn">⚡ Бүгдийг үнэл</button>
       <a href="/" class="btn btn-white">← Үнэлгээ хийх</a>
     </div>
   </div>
@@ -183,6 +204,25 @@
     </table>
     <div id="emptyState" class="empty" style="display:none">
       <div>Үнэлгээ байхгүй байна</div>
+    </div>
+  </div>
+</div>
+
+<!-- BATCH EVAL MODAL -->
+<div class="batch-overlay" id="batchOverlay">
+  <div class="batch-modal">
+    <h2>⚡ Бүгдийг үнэлэх</h2>
+    <p>Canvas-ийн бүх хичээлийг AI-аар автоматаар үнэлнэ</p>
+    <select id="batchInstance"></select>
+    <input id="batchEvaluator" placeholder="Үнэлгээч (жишээ: AI үнэлэгч)" value="AI үнэлэгч" />
+    <div class="batch-progress" id="batchProgress">
+      <div class="batch-progress-text" id="batchProgressText">Бэлдэж байна...</div>
+      <div class="batch-progress-bar"><div id="batchProgressBar" style="width:0%"></div></div>
+      <div class="batch-log" id="batchLog"></div>
+    </div>
+    <div class="batch-actions">
+      <button class="btn btn-primary" id="batchStartBtn">Эхлэх</button>
+      <button class="btn btn-ghost" id="batchCloseBtn">Хаах</button>
     </div>
   </div>
 </div>
@@ -516,23 +556,21 @@
     "C1: Зорилго", "C2: Агуулга", "C3: Дизайн",
     "C4: Харилцаа", "C5: Үнэлгээ", "C6: Технологи"
   ];
-  const CRITERION_KEYS = ["C1.Шалгуур 1","C2.Шалгуур 2","C3.Шалгуур 3","C4.Шалгуур 4","C5.Шалгуур 5","C6.Шалгуур 6"];
-
   function renderCharts(evals) {
     if (!evals || evals.length === 0) return;
 
     // Шалгуур тусбүрийн дундаж
-    const criterionSums = Object.fromEntries(CRITERION_KEYS.map(k => [k, 0]));
+    const criterionSums = Object.fromEntries(CRITERION_SHEET_KEYS.map(k => [k, 0]));
     let count = 0;
     for (const e of evals) {
       const totals = e.criterionTotals;
       if (!totals || typeof totals !== "object") continue;
-      for (const k of CRITERION_KEYS) {
+      for (const k of CRITERION_SHEET_KEYS) {
         criterionSums[k] += Number(totals[k] || 0);
       }
       count++;
     }
-    const criterionAvgs = CRITERION_KEYS.map(k => count ? Math.round((criterionSums[k] / count) * 10) / 10 : 0);
+    const criterionAvgs = CRITERION_SHEET_KEYS.map(k => count ? Math.round((criterionSums[k] / count) * 10) / 10 : 0);
 
     // Чанарын хуваарилалт
     let top=0, good=0, mid=0, low=0;
@@ -587,6 +625,133 @@
       }
     });
   }
+
+  // ===== BATCH EVAL =====
+  let batchRunning = false;
+
+  document.getElementById("batchEvalBtn").addEventListener("click", async () => {
+    const overlay = document.getElementById("batchOverlay");
+    overlay.classList.add("open");
+    const sel = document.getElementById("batchInstance");
+    sel.innerHTML = '<option value="">Ачаалж байна...</option>';
+    try {
+      const res = await fetch("/api/canvas/instances");
+      const data = await res.json();
+      if (data.ok && data.instances.length > 0) {
+        sel.innerHTML = data.instances.map(i => `<option value="${i.key}">${i.name}</option>`).join("");
+      } else {
+        sel.innerHTML = '<option value="">Instance тохируулагдаагүй</option>';
+      }
+    } catch {
+      sel.innerHTML = '<option value="">Холбогдож чадсангүй</option>';
+    }
+  });
+
+  document.getElementById("batchCloseBtn").addEventListener("click", () => {
+    if (batchRunning) return;
+    document.getElementById("batchOverlay").classList.remove("open");
+    document.getElementById("batchProgress").style.display = "none";
+    document.getElementById("batchLog").innerHTML = "";
+    document.getElementById("batchProgressBar").style.width = "0%";
+    document.getElementById("batchStartBtn").disabled = false;
+    document.getElementById("batchStartBtn").textContent = "Эхлэх";
+  });
+
+  document.getElementById("batchStartBtn").addEventListener("click", async () => {
+    if (batchRunning) return;
+    const instanceKey = document.getElementById("batchInstance").value;
+    const evaluator = document.getElementById("batchEvaluator").value.trim() || "AI үнэлэгч";
+    if (!instanceKey) return;
+
+    batchRunning = true;
+    document.getElementById("batchStartBtn").disabled = true;
+    document.getElementById("batchStartBtn").textContent = "Явагдаж байна...";
+    const progressWrap = document.getElementById("batchProgress");
+    const progressText = document.getElementById("batchProgressText");
+    const progressBar = document.getElementById("batchProgressBar");
+    const log = document.getElementById("batchLog");
+    progressWrap.style.display = "block";
+    log.innerHTML = "";
+
+    try {
+      const res = await fetch(`/api/canvas/courses?instanceKey=${instanceKey}&per_page=100`, {
+        headers: { "Authorization": `Bearer ${adminToken}` }
+      });
+      const data = await res.json();
+      if (!data.ok || !data.courses.length) {
+        progressText.textContent = "Хичээл олдсонгүй.";
+        batchRunning = false;
+        document.getElementById("batchStartBtn").disabled = false;
+        document.getElementById("batchStartBtn").textContent = "Эхлэх";
+        return;
+      }
+
+      const courses = data.courses;
+      const total = courses.length;
+      let done = 0, errors = 0;
+
+      for (const course of courses) {
+        progressText.textContent = `${done + 1}/${total} — ${course.name || course.course_code}`;
+        try {
+          const aiRes = await fetch("/api/canvas/analyze-course", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+            body: JSON.stringify({ courseId: course.id, instanceKey, evaluator, rubric: [] })
+          });
+          const aiData = await aiRes.json();
+          if (!aiData.ok) throw new Error(aiData.message || "AI алдаа");
+
+          const scores = aiData.aiScores || {};
+          const rubric = window._rubric || [];
+          const maxScore = 72;
+          const totalScore = Object.values(scores).reduce((s, v) => s + Number(v), 0);
+          const percent = Math.round((totalScore / maxScore) * 100);
+          const quality = percent >= 90 ? "Жишиг" : percent >= 75 ? "Сайн" : percent >= 60 ? "Дунд" : "Сул";
+
+          const criterionTotals = {};
+          ["C1","C2","C3","C4","C5","C6"].forEach((c, ci) => {
+            const keys = [`${c}.1`,`${c}.2`,`${c}.3`,`${c}.4`];
+            criterionTotals[`${c}.Шалгуур ${ci+1}`] = keys.reduce((s,k) => s + Number(scores[k]||0), 0);
+          });
+
+          await fetch("/api/evaluations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+            body: JSON.stringify({
+              courseCode: aiData.courseCode || course.course_code || String(course.id),
+              evaluator,
+              evalDate: new Date().toISOString().split("T")[0],
+              totalScore, maxScore, percent, quality,
+              overallAiAdvice: aiData.overallAdvice || "",
+              evidenceSummary: aiData.evidenceSummary || [],
+              criterionTotals,
+              scores
+            })
+          });
+
+          done++;
+          log.innerHTML += `<div class="ok">✓ ${course.course_code || course.name} — ${percent}% (${quality})</div>`;
+        } catch (err) {
+          errors++;
+          done++;
+          log.innerHTML += `<div class="err">✗ ${course.course_code || course.name} — ${err.message}</div>`;
+        }
+        progressBar.style.width = `${Math.round((done / total) * 100)}%`;
+        log.scrollTop = log.scrollHeight;
+      }
+
+      progressText.textContent = `Дууслаа — ${done - errors}/${total} амжилттай${errors ? `, ${errors} алдаа` : ""}`;
+      document.getElementById("batchStartBtn").textContent = "Дахин эхлэх";
+      document.getElementById("batchStartBtn").disabled = false;
+      batchRunning = false;
+      await load();
+    } catch (err) {
+      progressText.textContent = "Алдаа гарлаа: " + err.message;
+      batchRunning = false;
+      document.getElementById("batchStartBtn").disabled = false;
+      document.getElementById("batchStartBtn").textContent = "Эхлэх";
+    }
+  });
 
   // Хэрэв token байвал шууд dashboard харуулах
   if (adminToken) {

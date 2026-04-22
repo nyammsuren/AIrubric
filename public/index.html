@@ -375,6 +375,7 @@
 
         <div class="card" id="submitCard" style="padding:18px 20px;">
           <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
+          <button id="resetBtn" style="display:none;margin-top:10px;width:100%;font-size:14px;padding:10px 24px;border-radius:14px;border:1px solid #e6ebf3;background:#f8faff;color:#64748b;cursor:pointer;font-weight:600;">↺ Дахин эхлэх</button>
           <div id="statusBoxBottom" class="status"></div>
         </div>
 
@@ -425,6 +426,7 @@
             const side = document.querySelector(".side");
             const submitCard = document.getElementById("submitCard");
             side.insertBefore(submitCard, side.firstChild);
+            document.getElementById("resetBtn").style.display = "block";
 
             if (mode === "rubric") {
               setTimeout(() => openEditor(), 300);
@@ -1038,35 +1040,6 @@
       };
     }
 
-    function flattenPayload(payload){
-      const base = {
-        courseCode: payload.courseCode, evaluator: payload.evaluator,
-        evalDate: payload.evalDate, totalScore: payload.totalScore,
-        maxScore: payload.maxScore, percent: payload.percent,
-        quality: payload.quality, overallAiAdvice: payload.overallAiAdvice,
-        exportedAt: payload.exportedAt,
-      };
-      rubric.forEach(c => {
-        base[`${c.id}_title`] = c.title;
-        base[`${c.id}_score`] = payload.criterionTotals[c.id];
-        base[`${c.id}_percent`] = payload.criterionPercents[c.id];
-      });
-      Object.entries(payload.scores).forEach(([k,v]) => base[k] = v ?? "");
-      return base;
-    }
-
-    async function submitToGoogleSheet(payload) {
-      try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: "POST", mode: "no-cors",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify(flattenPayload(payload))
-        });
-      } catch (error) {
-        showStatus("Google Sheet рүү хадгалах үед алдаа гарлаа.", false);
-      }
-    }
-
     async function submitEvaluation() {
       const payload = getPayload();
       if (!payload.courseCode || !payload.evaluator) {
@@ -1097,6 +1070,22 @@
 
     document.getElementById("submitBtnBottom").addEventListener("click", submitEvaluation);
 
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      state.scores = {};
+      state.reasons = {};
+      state.evidenceSummary = [];
+      document.getElementById("courseCode").value = "";
+      document.getElementById("evaluator").value = "";
+      document.getElementById("evalDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("canvasCourseId").value = "";
+      document.getElementById("courseSearchInput").value = "";
+      document.getElementById("overallAiText").value = "";
+      document.getElementById("evidenceSummaryBox").style.display = "none";
+      document.getElementById("statusBoxBottom").textContent = "";
+      renderCriteria();
+      renderSummary();
+    });
+
     // ===== CANVAS IMPORT =====
     function normalizeAiScores(aiScores){
       const normalized = {};
@@ -1114,7 +1103,7 @@
       Object.entries(aiScores).forEach(([key, value]) => { state.scores[key] = value; });
       state.reasons = result.reasons || {};
       state.evidenceSummary = result.evidenceSummary || [];
-      if (result.courseTitle) document.getElementById("courseCode").value = result.courseTitle;
+      if (result.courseCode) document.getElementById("courseCode").value = result.courseCode;
       if (result.courseId) document.getElementById("canvasCourseId").value = String(result.courseId);
       if (result.overallAdvice) overallAiTextEl.value = result.overallAdvice;
       renderEvidenceSummary(result.evidenceSummary || []);
@@ -1148,34 +1137,6 @@
         renderEvidenceSummary(["Canvas integration алдаа гарлаа."]);
       }
     }
-
-    function downloadXLSX() {
-      const rows = [];
-
-      rows.push(["Шалгуур код", "Шалгуур гарчиг", "Үзүүлэлт код", "Үзүүлэлт гарчиг",
-        "Түвшин 1 (0 оноо)", "Түвшин 2 (1 оноо)", "Түвшин 3 (2 оноо)", "Түвшин 4 (3 оноо)"]);
-
-      rubric.forEach(c => {
-        c.indicators.forEach(ind => {
-          const lvl = [0, 1, 2, 3].map(s => {
-            const l = ind.levels.find(x => x.score === s);
-            return l ? l.text : "";
-          });
-          rows.push([c.id, c.title, ind.id, ind.title, ...lvl]);
-        });
-      });
-
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws["!cols"] = [{ wch: 14 }, { wch: 36 }, { wch: 10 }, { wch: 30 },
-        { wch: 44 }, { wch: 44 }, { wch: 44 }, { wch: 44 }];
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Рубрик");
-
-      const date = new Date().toISOString().split("T")[0];
-      XLSX.writeFile(wb, `rubric_${date}.xlsx`);
-    }
-
 
     // ===== INSTANCE SELECTOR =====
     (function(){
