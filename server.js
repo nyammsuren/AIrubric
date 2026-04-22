@@ -276,7 +276,13 @@ async function scoreWithAI(evidenceText, rubricMap = DEFAULT_RUBRIC_MAP) {
 - Мэдээлэл байхгүй бол 0 өг — 2 эсвэл 3 өгөхийн тулд тодорхой нотолгоо шаардлагатай.
 - "reasons" талбарт өгөгдөлд байгаа тодорхой зүйлийг (module нэр, assignment нэр, тоо гэх мэт) дурдан 1-2 өгүүлбэрээр Монголоор тайлбарла.
 - "overallAdvice" талбарт: нийт дүгнэлт → хамгийн сул 3 үзүүлэлт → тус бүрд тодорхой, хийж болох алхам. Монголоор, практик байлга.
-- "evidenceSummary" талбарт өгөгдөлд байгаа бодит тоо, нэрсийг жагсаа (модулийн тоо, даалгаврын тоо, хэлэлцүүлгийн оролцогчдын тоо гэх мэт).
+- "evidenceSummary" талбарт доорх 6 мөрийг ЗААВАЛ энэ дарааллаар оруул:
+  1. "Модуль: X, нийт item: Y"
+  2. "Даалгавар: X ширхэг, rubrictай: Y"
+  3. "Хэлэлцүүлэг: X, нийт хариу: Y, оролцогч: Z"
+  4. "Rubric: X ширхэг (нийт шалгуур: Y)"
+  5. Syllabus-т CLO байгаа эсэх тухай 1 өгүүлбэр
+  6. Хамгийн анхаарал татсан 1 сул тал
 - Хариуг ЗӨВХӨН JSON хэлбэрээр буцаа. Markdown fence (\`\`\`) бүү ашигла.
 
 ## РУБРИК
@@ -354,11 +360,14 @@ app.get("/api/canvas/instances", (req, res) => {
 
 app.get("/api/canvas/courses", async (req, res) => {
   try {
-    const instance = getInstance(req.query.instance);
+    const instanceKey = req.query.instanceKey || req.query.instance;
+    const instance = getInstance(instanceKey);
     if (!instance) return res.status(400).json({ ok: false, message: "Canvas instance тохируулагдаагүй байна." });
     const data = await canvasGet(instance, "/api/v1/courses", {
-      per_page: 50,
-      search_term: req.query.search || ""
+      per_page: 100,
+      search_term: req.query.search || "",
+      enrollment_type: "teacher",
+      state: ["available"]
     });
     res.json({ ok: true, courses: data.map(c => ({ id: c.id, name: c.name, course_code: c.course_code })) });
   } catch (error) {
