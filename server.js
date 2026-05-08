@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import { readFileSync } from "fs";
 
 dotenv.config();
 
@@ -522,6 +523,18 @@ app.post("/api/evaluations", async (req, res) => {
 
 app.get("/api/evaluations", requireAdmin, (req, res) => {
   res.json({ ok: true, evaluations });
+});
+
+app.get("/api/rubric", requireAdmin, (req, res) => {
+  try {
+    const html = readFileSync(new URL("./public/index.html", import.meta.url), "utf8");
+    const match = html.match(/let rubric\s*=\s*(\[[\s\S]*?\n\s*\]);/);
+    if (!match) return res.json({ ok: false, message: "Рубрик олдсонгүй" });
+    const rubric = JSON.parse(match[1]);
+    res.json({ ok: true, rubric });
+  } catch (e) {
+    res.status(500).json({ ok: false, message: e.message });
+  }
 });
 
 app.get("/api/sheet-data", requireAdmin, async (req, res) => {

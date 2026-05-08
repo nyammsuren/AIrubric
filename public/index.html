@@ -376,7 +376,6 @@
         <div class="card" id="submitCard" style="padding:18px 20px;">
           <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
           <button id="resetBtn" style="display:none;margin-top:10px;width:100%;font-size:14px;padding:10px 24px;border-radius:14px;border:1px solid #e6ebf3;background:#f8faff;color:#64748b;cursor:pointer;font-weight:600;">↺ Дахин эхлэх</button>
-          <button id="downloadRubricBtn" style="margin-top:10px;width:100%;font-size:14px;padding:10px 24px;border-radius:14px;border:1px solid #e6ebf3;background:#f8faff;color:#315efb;cursor:pointer;font-weight:600;">⬇ Рубрик татаж авах (.xlsx)</button>
           <div id="statusBoxBottom" class="status"></div>
         </div>
 
@@ -1090,8 +1089,6 @@
       XLSX.utils.book_append_sheet(wb, ws, "Рубрик");
       XLSX.writeFile(wb, `rubric_${new Date().toISOString().split("T")[0]}.xlsx`);
     }
-
-    document.getElementById("downloadRubricBtn").addEventListener("click", downloadRubric);
 
     document.getElementById("resetBtn").addEventListener("click", () => {
       state.scores = {};

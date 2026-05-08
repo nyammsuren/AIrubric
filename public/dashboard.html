@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Дашбоард — НН Рубрик</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg:#f6f8fc; --card:#fff; --line:#e6ebf3; --text:#172033;
@@ -136,6 +137,7 @@
       <button class="btn btn-white" id="editRubricBtn">✏️ Рубрик засах</button>
       <button class="btn btn-white" id="aiEvalBtn">🤖 AI үнэлгээ</button>
       <button class="btn btn-white" id="batchEvalBtn">⚡ Бүгдийг үнэл</button>
+      <button class="btn btn-white" id="downloadRubricBtn">⬇ Рубрик татах</button>
       <a href="/" class="btn btn-white">← Үнэлгээ хийх</a>
     </div>
   </div>
@@ -750,6 +752,29 @@
       batchRunning = false;
       document.getElementById("batchStartBtn").disabled = false;
       document.getElementById("batchStartBtn").textContent = "Эхлэх";
+    }
+  });
+
+  document.getElementById("downloadRubricBtn").addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/rubric");
+      const data = await res.json();
+      const rubric = data.rubric || [];
+      const rows = [["Шалгуур код","Шалгуур гарчиг","Үзүүлэлт код","Үзүүлэлт гарчиг",
+        "Түвшин 1 (0 оноо)","Түвшин 2 (1 оноо)","Түвшин 3 (2 оноо)","Түвшин 4 (3 оноо)"]];
+      rubric.forEach(c => {
+        c.indicators.forEach(ind => {
+          const lvl = [0,1,2,3].map(s => { const l = ind.levels.find(x=>x.score===s); return l?l.text:""; });
+          rows.push([c.id, c.title, ind.id, ind.title, ...lvl]);
+        });
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{wch:14},{wch:36},{wch:10},{wch:30},{wch:44},{wch:44},{wch:44},{wch:44}];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Рубрик");
+      XLSX.writeFile(wb, `rubric_${new Date().toISOString().split("T")[0]}.xlsx`);
+    } catch {
+      alert("Рубрик татахад алдаа гарлаа.");
     }
   });
 
