@@ -366,8 +366,7 @@ app.get("/api/canvas/courses", async (req, res) => {
     if (!instance) return res.status(400).json({ ok: false, message: "Canvas instance тохируулагдаагүй байна." });
     const data = await canvasGet(instance, "/api/v1/courses", {
       per_page: 100,
-      search_term: req.query.search || "",
-      state: ["available"]
+      search_term: req.query.search || ""
     });
     res.json({ ok: true, courses: data.map(c => ({ id: c.id, name: c.name, course_code: c.course_code })) });
   } catch (error) {
@@ -528,9 +527,17 @@ app.get("/api/evaluations", requireAdmin, (req, res) => {
 app.get("/api/rubric", requireAdmin, (req, res) => {
   try {
     const html = readFileSync(new URL("./public/index.html", import.meta.url), "utf8");
-    const match = html.match(/let rubric\s*=\s*(\[[\s\S]*?\n\s*\]);/);
-    if (!match) return res.json({ ok: false, message: "Рубрик олдсонгүй" });
-    const rubric = JSON.parse(match[1]);
+    const start = html.indexOf("let rubric = [");
+    if (start === -1) return res.json({ ok: false, message: "Рубрик олдсонгүй" });
+    // Find matching closing bracket
+    let depth = 0, i = html.indexOf("[", start);
+    const begin = i;
+    while (i < html.length) {
+      if (html[i] === "[") depth++;
+      else if (html[i] === "]") { depth--; if (depth === 0) break; }
+      i++;
+    }
+    const rubric = JSON.parse(html.slice(begin, i + 1));
     res.json({ ok: true, rubric });
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
