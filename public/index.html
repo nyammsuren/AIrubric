@@ -369,6 +369,38 @@
     <section class="layout">
       <div class="criteria" id="criteria"></div>
 
+      <div class="card" id="extraQCard" style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;margin-bottom:0;">
+        <div style="font-size:15px;font-weight:700;color:var(--text);">Нэмэлт асуулт</div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:13px;color:var(--muted);">Нэмж болох шалгуур эсвэл үзүүлэлт байна уу? Ерөнхий санал, сэтгэгдэл?</label>
+          <textarea id="sq_comment" placeholder="Хариултаа бичнэ үү..."
+            style="border:1px solid #e6ebf3;border-radius:10px;padding:10px 12px;font-size:14px;resize:vertical;min-height:70px;font-family:inherit;"></textarea>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="font-size:13px;color:var(--muted);">Та хэдэн жил багшилж байна вэ?</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="5 хүртэл жил" style="accent-color:var(--primary);" /> 5 хүртэл</label>
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="6–10 жил" style="accent-color:var(--primary);" /> 6–10 жил</label>
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="11–15 жил" style="accent-color:var(--primary);" /> 11–15 жил</label>
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="15-аас дээш" style="accent-color:var(--primary);" /> 15+</label>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="font-size:13px;color:var(--muted);">Энэ шалгуурыг манай сургуульд цаашид хэрэглэх боломжтой гэж үзэж байна</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid #e6ebf3;border-radius:8px;padding:5px 12px;"><input type="radio" name="sq_use" value="1" style="accent-color:var(--primary);" /> 1</label>
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid #e6ebf3;border-radius:8px;padding:5px 12px;"><input type="radio" name="sq_use" value="2" style="accent-color:var(--primary);" /> 2</label>
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid #e6ebf3;border-radius:8px;padding:5px 12px;"><input type="radio" name="sq_use" value="3" style="accent-color:var(--primary);" /> 3</label>
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid #e6ebf3;border-radius:8px;padding:5px 12px;"><input type="radio" name="sq_use" value="4" style="accent-color:var(--primary);" /> 4</label>
+            <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid #e6ebf3;border-radius:8px;padding:5px 12px;"><input type="radio" name="sq_use" value="5" style="accent-color:var(--primary);" /> 5</label>
+            <span style="font-size:11px;color:var(--muted);">1 = огт боломжгүй &nbsp; 5 = бүрэн боломжтой</span>
+          </div>
+        </div>
+      </div>
+
       <aside class="side">
         <div class="card summary">
           <div class="summary-top">
@@ -406,34 +438,6 @@
             style="width:100%;min-height:300px;border:1px solid #e6ebf3;border-radius:16px;
             padding:14px;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
           <div id="evidenceSummaryBox" style="display:none;margin-top:14px;"></div>
-        </div>
-
-        <div class="card" style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
-          <div style="font-size:15px;font-weight:700;color:var(--text);">Нэмэлт асуулт</div>
-
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:13px;color:var(--muted);">Нэмж болох шалгуур эсвэл үзүүлэлт байна уу? Ерөнхий санал, сэтгэгдэл?</label>
-            <textarea id="sq_comment" placeholder="Хариултаа бичнэ үү..."
-              style="border:1px solid #e6ebf3;border-radius:10px;padding:10px 12px;font-size:14px;resize:vertical;min-height:70px;font-family:inherit;"></textarea>
-          </div>
-
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <label style="font-size:13px;color:var(--muted);">Та хэдэн жил багшилж байна вэ?</label>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;">
-              <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="5 хүртэл жил" style="accent-color:var(--primary);" /> 5 хүртэл</label>
-              <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="6–10 жил" style="accent-color:var(--primary);" /> 6–10 жил</label>
-              <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="11–15 жил" style="accent-color:var(--primary);" /> 11–15 жил</label>
-              <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;"><input type="radio" name="sq_exp" value="15-аас дээш" style="accent-color:var(--primary);" /> 15+</label>
-            </div>
-          </div>
-
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <label style="font-size:13px;color:var(--muted);">Энэ шалгуурыг манай сургуульд цаашид хэрэглэх боломжтой гэж үзэж байна</label>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              ${[1,2,3,4,5].map(v => `<label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;border:1px solid #e6ebf3;border-radius:8px;padding:5px 10px;"><input type="radio" name="sq_use" value="${v}" style="accent-color:var(--primary);" /> ${v}</label>`).join("")}
-              <span style="font-size:11px;color:var(--muted);align-self:center;">1 = огт боломжгүй &nbsp; 5 = бүрэн боломжтой</span>
-            </div>
-          </div>
         </div>
 
         <div class="card" id="submitCard" style="padding:18px 20px;">
@@ -1167,6 +1171,24 @@
       const unscored = rubric.flatMap(c => c.indicators).filter(i => state.scores[i.id] == null);
       if (unscored.length) {
         showStatus(`Бүх үзүүлэлтийг үнэлнэ үү. Үлдсэн: ${unscored.length}`, false);
+        return;
+      }
+      const unansweredFb = rubric.filter(c => {
+        const cid = c.id.split(".")[0];
+        const hasChecked = c.indicators.some(ind => state.feedback[ind.id]);
+        const allMatch = state.feedback[cid + "_all"];
+        return !hasChecked && !allMatch;
+      });
+      if (unansweredFb.length) {
+        showStatus(`Шалгуур бүрийн доор байрлах асуултад бүрэн хариулна уу. Үлдсэн: ${unansweredFb.map(c => c.id.split(".")[0]).join(", ")}`, false);
+        return;
+      }
+      if (!document.querySelector('input[name="sq_exp"]:checked')) {
+        showStatus("Та хэдэн жил багшилж байна вэ? гэсэн асуултад хариулна уу.", false);
+        return;
+      }
+      if (!document.querySelector('input[name="sq_use"]:checked')) {
+        showStatus("Шалгуурыг цаашид хэрэглэх боломжтой эсэх талаар хариулна уу.", false);
         return;
       }
       try {
