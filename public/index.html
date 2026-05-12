@@ -217,6 +217,37 @@
     }
     .btn-cancel{background:#f1f4fb;color:#334155;border:1px solid var(--line);}
 
+    /* SURVEY */
+    .survey-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.7);
+      z-index:2000;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto;}
+    .survey-overlay.open{display:flex;}
+    .survey-modal{background:#fff;border-radius:24px;width:100%;max-width:680px;
+      box-shadow:0 24px 64px rgba(10,20,50,.25);margin:auto;}
+    .survey-head{padding:22px 28px;border-bottom:1px solid var(--line);border-radius:24px 24px 0 0;background:linear-gradient(135deg,#2242bb,#4d7cff);color:#fff;}
+    .survey-head h2{margin:0 0 6px;font-size:20px;}
+    .survey-head p{margin:0;font-size:13px;opacity:.9;}
+    .survey-body{padding:24px 28px;display:flex;flex-direction:column;gap:22px;}
+    .survey-q{display:flex;flex-direction:column;gap:8px;}
+    .survey-q label{font-size:14px;font-weight:700;color:var(--text);}
+    .survey-q textarea{border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+      font-size:14px;font-family:inherit;resize:vertical;min-height:80px;outline:none;}
+    .survey-q textarea:focus{border-color:var(--primary);}
+    .exp-options{display:flex;flex-wrap:wrap;gap:10px;}
+    .exp-opt{display:flex;align-items:center;gap:6px;background:#f8faff;
+      border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:14px;}
+    .exp-opt input{accent-color:var(--primary);}
+    .likert-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .likert-table th{padding:8px 6px;text-align:center;color:var(--muted);font-weight:600;
+      background:#f8faff;border-bottom:1px solid var(--line);}
+    .likert-table th:first-child{text-align:left;width:50%;}
+    .likert-table td{padding:10px 6px;text-align:center;border-bottom:1px solid var(--line);}
+    .likert-table td:first-child{text-align:left;font-size:13px;padding-left:0;}
+    .likert-table tr:last-child td{border-bottom:none;}
+    .likert-table input[type=radio]{accent-color:var(--primary);width:16px;height:16px;cursor:pointer;}
+    .survey-foot{padding:16px 28px;border-top:1px solid var(--line);border-radius:0 0 24px 24px;
+      background:#fff;display:flex;justify-content:flex-end;}
+    .survey-foot .btn-primary{background:var(--primary);color:#fff;font-size:15px;padding:12px 28px;}
+
     .editor-criterion{
       border:1px solid var(--line);border-radius:18px;overflow:hidden;
     }
@@ -1064,7 +1095,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-          showStatus("Үнэлгээ амжилттай хадгалагдлаа.", true);
+          showSurvey(data.id);
         } else {
           showStatus(data.message || "Хадгалахад алдаа гарлаа.", false);
         }
@@ -1278,6 +1309,142 @@
 
     renderCriteria();
     renderSummary();
+
+    // ===== SURVEY =====
+    let pendingEvalId = null;
+
+    function showSurvey(evalId) {
+      pendingEvalId = evalId;
+      document.getElementById("surveyOverlay").classList.add("open");
+    }
+
+    document.getElementById("surveyForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+
+      const q1 = form.survey_q1.value.trim();
+      const q2 = form.survey_q2.value.trim();
+      const exp = form.querySelector('input[name="survey_exp"]:checked');
+      if (!exp) { alert("Багшлах туршлагаа сонгоно уу."); return; }
+
+      const likert = {};
+      for (let i = 1; i <= 5; i++) {
+        const checked = form.querySelector(`input[name="survey_l${i}"]:checked`);
+        if (!checked) { alert(`${i}-р асуултыг бөглөнө үү.`); return; }
+        likert[`survey_l${i}`] = Number(checked.value);
+      }
+
+      const payload = { evalId: pendingEvalId, survey_q1: q1, survey_q2: q2, survey_exp: exp.value, ...likert };
+
+      try {
+        const res = await fetch("/api/survey", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        await res.json();
+        document.getElementById("surveyOverlay").classList.remove("open");
+        showStatus("Үнэлгээ болон судалгаа амжилттай хадгалагдлаа.", true);
+      } catch {
+        alert("Судалгаа илгээхэд алдаа гарлаа. Дахин оролдоно уу.");
+      }
+    });
   </script>
 </body>
+
+<!-- SURVEY MODAL -->
+<div class="survey-overlay" id="surveyOverlay">
+  <div class="survey-modal">
+    <div class="survey-head">
+      <h2>Судалгаа</h2>
+      <p>Энэхүү судалгаа нь тус шалгуур бусад их дээд сургуулийн онлайн хичээлд хэр тохирч байгааг тодорхойлоход чиглэнэ. Хариулт бүрэн нууцлагдана.</p>
+    </div>
+    <form id="surveyForm">
+      <div class="survey-body">
+
+        <div class="survey-q">
+          <label>1. Танай сургуулийн онлайн хичээлд тохирохгүй байсан үзүүлэлт байсан уу? Байсан бол аль шалгуурын аль үзүүлэлт, яагаад?</label>
+          <textarea name="survey_q1" placeholder="Хариултаа бичнэ үү..."></textarea>
+        </div>
+
+        <div class="survey-q">
+          <label>2. Нэмж болох шалгуур эсвэл үзүүлэлт байна уу? Ерөнхий санал, сэтгэгдэл?</label>
+          <textarea name="survey_q2" placeholder="Хариултаа бичнэ үү..."></textarea>
+        </div>
+
+        <div class="survey-q">
+          <label>Таны багшлах туршлага</label>
+          <div class="exp-options">
+            <label class="exp-opt"><input type="radio" name="survey_exp" value="5-аас доош" /> 5 хүртэл жил</label>
+            <label class="exp-opt"><input type="radio" name="survey_exp" value="6–10 жил" /> 6–10 жил</label>
+            <label class="exp-opt"><input type="radio" name="survey_exp" value="11–15 жил" /> 11–15 жил</label>
+            <label class="exp-opt"><input type="radio" name="survey_exp" value="15-аас дээш" /> 15-аас дээш жил</label>
+          </div>
+        </div>
+
+        <div class="survey-q">
+          <label>Дараах мэдэгдэлтэй хэр зэрэг санал нийлж байна вэ?</label>
+          <table class="likert-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>1<br><span style="font-weight:400;font-size:11px">Огт санал<br>нийлэхгүй</span></th>
+                <th>2</th>
+                <th>3<br><span style="font-weight:400;font-size:11px">Дунд<br>зэрэг</span></th>
+                <th>4</th>
+                <th>5<br><span style="font-weight:400;font-size:11px">Бүрэн санал<br>нийлж байна</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>1. Рубрикийн үзүүлэлтүүд тодорхой, ойлгомжтой томьёологдсон байсан</td>
+                <td><input type="radio" name="survey_l1" value="1" /></td>
+                <td><input type="radio" name="survey_l1" value="2" /></td>
+                <td><input type="radio" name="survey_l1" value="3" /></td>
+                <td><input type="radio" name="survey_l1" value="4" /></td>
+                <td><input type="radio" name="survey_l1" value="5" /></td>
+              </tr>
+              <tr>
+                <td>2. Рубрикийн 6 шалгуур бүгд манай сургуулийн онлайн хичээлд хамааралтай байсан</td>
+                <td><input type="radio" name="survey_l2" value="1" /></td>
+                <td><input type="radio" name="survey_l2" value="2" /></td>
+                <td><input type="radio" name="survey_l2" value="3" /></td>
+                <td><input type="radio" name="survey_l2" value="4" /></td>
+                <td><input type="radio" name="survey_l2" value="5" /></td>
+              </tr>
+              <tr>
+                <td>3. Оноолтын 4 шатлал нь хичээлийг хангалттай ялгах боломж өгсөн</td>
+                <td><input type="radio" name="survey_l3" value="1" /></td>
+                <td><input type="radio" name="survey_l3" value="2" /></td>
+                <td><input type="radio" name="survey_l3" value="3" /></td>
+                <td><input type="radio" name="survey_l3" value="4" /></td>
+                <td><input type="radio" name="survey_l3" value="5" /></td>
+              </tr>
+              <tr>
+                <td>4. Энэ шалгуурыг манай сургуульд цаашид хэрэглэх боломжтой гэж үзэж байна</td>
+                <td><input type="radio" name="survey_l4" value="1" /></td>
+                <td><input type="radio" name="survey_l4" value="2" /></td>
+                <td><input type="radio" name="survey_l4" value="3" /></td>
+                <td><input type="radio" name="survey_l4" value="4" /></td>
+                <td><input type="radio" name="survey_l4" value="5" /></td>
+              </tr>
+              <tr>
+                <td>5. Энэ шалгуурыг бусад багш нартаа санал болгох боломжтой</td>
+                <td><input type="radio" name="survey_l5" value="1" /></td>
+                <td><input type="radio" name="survey_l5" value="2" /></td>
+                <td><input type="radio" name="survey_l5" value="3" /></td>
+                <td><input type="radio" name="survey_l5" value="4" /></td>
+                <td><input type="radio" name="survey_l5" value="5" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+      <div class="survey-foot">
+        <button type="submit" class="btn btn-primary" style="background:var(--primary);color:#fff;font-size:15px;padding:12px 28px;border-radius:12px;font-weight:700;cursor:pointer;border:none;">Судалгаа илгээх</button>
+      </div>
+    </form>
+  </div>
+</div>
 </html>

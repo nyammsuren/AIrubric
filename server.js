@@ -522,6 +522,36 @@ app.post("/api/evaluations", async (req, res) => {
   }
 });
 
+app.post("/api/survey", async (req, res) => {
+  try {
+    const { evalId, survey_q1, survey_q2, survey_exp,
+            survey_l1, survey_l2, survey_l3, survey_l4, survey_l5 } = req.body || {};
+
+    const entry = evaluations.find(e => e.id === evalId);
+    const surveyData = { survey_q1: survey_q1 || "", survey_q2: survey_q2 || "",
+      survey_exp: survey_exp || "", survey_l1, survey_l2, survey_l3, survey_l4, survey_l5 };
+
+    if (entry) Object.assign(entry, surveyData);
+
+    const googleUrl = process.env.GOOGLE_SCRIPT_URL;
+    if (googleUrl) {
+      try {
+        await fetch(googleUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "survey", evalId, ...surveyData })
+        });
+      } catch (err) {
+        console.error("Survey Sheets алдаа:", err.message);
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ ok: false, message: error.message });
+  }
+});
+
 app.get("/api/evaluations", requireAdmin, (req, res) => {
   res.json({ ok: true, evaluations });
 });
