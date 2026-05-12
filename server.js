@@ -512,7 +512,10 @@ app.post("/api/evaluations", async (req, res) => {
           fb_C5: fb["C5"] ?? "", fb_C6: fb["C6"] ?? "",
           fb_C1_all: fb["C1_all"] ? "тийм" : "", fb_C2_all: fb["C2_all"] ? "тийм" : "",
           fb_C3_all: fb["C3_all"] ? "тийм" : "", fb_C4_all: fb["C4_all"] ? "тийм" : "",
-          fb_C5_all: fb["C5_all"] ? "тийм" : "", fb_C6_all: fb["C6_all"] ? "тийм" : ""
+          fb_C5_all: fb["C5_all"] ? "тийм" : "", fb_C6_all: fb["C6_all"] ? "тийм" : "",
+          sq_comment: payload.sq_comment || "",
+          sq_exp:     payload.sq_exp || "",
+          sq_use:     payload.sq_use || ""
         };
 
         await fetch(googleUrl, {
