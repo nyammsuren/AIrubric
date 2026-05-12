@@ -943,10 +943,29 @@
                 style="accent-color:var(--primary);" />
               ${ind.id}
             </label>`).join("")}
+          <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;
+            background:${state.feedback[criterion.id.split('.')[0]+'_all'] ? '#e6faf0' : '#fff'};
+            border:1px solid ${state.feedback[criterion.id.split('.')[0]+'_all'] ? '#22c55e' : '#d1d5db'};
+            border-radius:8px;padding:5px 10px;">
+            <input type="checkbox" data-all="${criterion.id.split('.')[0]}"
+              ${state.feedback[criterion.id.split('.')[0]+'_all'] ? 'checked' : ''}
+              style="accent-color:#22c55e;" />
+            Бүгд таарч байна
+          </label>
         </div>`;
-        fbDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
+        fbDiv.querySelectorAll("input[data-ind]").forEach(cb => {
           cb.addEventListener("change", () => {
             state.feedback[cb.dataset.ind] = cb.checked;
+            if (cb.checked) state.feedback[criterion.id.split(".")[0] + "_all"] = false;
+            renderCriteria();
+            renderSummary();
+          });
+        });
+        fbDiv.querySelectorAll("input[data-all]").forEach(cb => {
+          cb.addEventListener("change", () => {
+            const cid = cb.dataset.all;
+            state.feedback[cid + "_all"] = cb.checked;
+            if (cb.checked) criterion.indicators.forEach(ind => { state.feedback[ind.id] = false; });
             renderCriteria();
             renderSummary();
           });
