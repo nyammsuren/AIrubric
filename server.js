@@ -525,13 +525,18 @@ app.post("/api/evaluations", async (req, res) => {
 
 app.post("/api/survey", async (req, res) => {
   try {
-    const { evalId, survey_q1, survey_q2, survey_exp,
+    const { evalId, schoolName, courseCode,
+            survey_q1, survey_q2, survey_exp,
             survey_l1, survey_l2, survey_l3, survey_l4, survey_l5 } = req.body || {};
 
-    const entry = evaluations.find(e => e.id === evalId);
-    const surveyData = { survey_q1: survey_q1 || "", survey_q2: survey_q2 || "",
-      survey_exp: survey_exp || "", survey_l1, survey_l2, survey_l3, survey_l4, survey_l5 };
+    const numericId = Number(evalId);
+    const entry = evaluations.find(e => e.id === numericId);
 
+    const surveyData = {
+      survey_q1: survey_q1 || "", survey_q2: survey_q2 || "",
+      survey_exp: survey_exp || "",
+      survey_l1, survey_l2, survey_l3, survey_l4, survey_l5
+    };
     if (entry) Object.assign(entry, surveyData);
 
     const googleUrl = process.env.GOOGLE_SCRIPT_URL;
@@ -540,10 +545,16 @@ app.post("/api/survey", async (req, res) => {
         await fetch(googleUrl, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ action: "survey", evalId, ...surveyData })
+          body: JSON.stringify({
+            action: "survey",
+            evalId: numericId,
+            schoolName: schoolName || entry?.schoolName || "",
+            courseCode: courseCode || entry?.courseCode || "",
+            ...surveyData
+          })
         });
       } catch (err) {
-        console.error("Survey Sheets алдаа:", err.message);
+        console.error("[survey] Sheets алдаа:", err.message);
       }
     }
 

@@ -1095,7 +1095,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-          showSurvey(data.id);
+          showSurvey(data.id, payload.schoolName, payload.courseCode);
         } else {
           showStatus(data.message || "Хадгалахад алдаа гарлаа.", false);
         }
@@ -1312,9 +1312,13 @@
 
     // ===== SURVEY =====
     let pendingEvalId = null;
+    let pendingSchoolName = "";
+    let pendingCourseCode = "";
 
-    function showSurvey(evalId) {
+    function showSurvey(evalId, schoolName, courseCode) {
       pendingEvalId = evalId;
+      pendingSchoolName = schoolName || "";
+      pendingCourseCode = courseCode || "";
       document.getElementById("surveyOverlay").classList.add("open");
     }
 
@@ -1332,11 +1336,14 @@
       const likert = {};
       for (let i = 1; i <= 5; i++) {
         const checked = form.querySelector(`input[name="survey_l${i}"]:checked`);
-        if (!checked) { alert(`${i}-р асуултыг бөглөнө үү.`); return; }
+        if (!checked) { alert(`${i}-р Ликерт асуултыг бөглөнө үү.`); return; }
         likert[`survey_l${i}`] = Number(checked.value);
       }
 
-      const payload = { evalId: pendingEvalId, survey_q1: q1, survey_q2: q2, survey_exp: exp.value, ...likert };
+      const payload = {
+        evalId: pendingEvalId, schoolName: pendingSchoolName, courseCode: pendingCourseCode,
+        survey_q1: q1, survey_q2: q2, survey_exp: exp.value, ...likert
+      };
 
       try {
         const res = await fetch("/api/survey", {
@@ -1351,8 +1358,8 @@
         alert("Судалгаа илгээхэд алдаа гарлаа. Дахин оролдоно уу.");
       }
     });
+
   </script>
-</body>
 
 <!-- SURVEY MODAL -->
 <div class="survey-overlay" id="surveyOverlay">
@@ -1449,4 +1456,5 @@
     </form>
   </div>
 </div>
+
 </html>
