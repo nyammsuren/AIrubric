@@ -472,6 +472,7 @@ app.post("/api/evaluations", async (req, res) => {
         const ct = payload.criterionTotals || {};
         const cp = payload.criterionPercents || {};
         const sc = payload.scores || {};
+        const fb = payload.feedback || {};
 
         const sheetPayload = {
           id:              entry.id,
@@ -504,7 +505,11 @@ app.post("/api/evaluations", async (req, res) => {
           "C5.1": sc["C5.1"] ?? "", "C5.2": sc["C5.2"] ?? "",
           "C5.3": sc["C5.3"] ?? "", "C5.4": sc["C5.4"] ?? "",
           "C6.1": sc["C6.1"] ?? "", "C6.2": sc["C6.2"] ?? "",
-          "C6.3": sc["C6.3"] ?? "", "C6.4": sc["C6.4"] ?? ""
+          "C6.3": sc["C6.3"] ?? "", "C6.4": sc["C6.4"] ?? "",
+          // Feedback: тохирохгүй үзүүлэлтүүд
+          fb_C1: fb["C1"] ?? "", fb_C2: fb["C2"] ?? "",
+          fb_C3: fb["C3"] ?? "", fb_C4: fb["C4"] ?? "",
+          fb_C5: fb["C5"] ?? "", fb_C6: fb["C6"] ?? ""
         };
 
         await fetch(googleUrl, {

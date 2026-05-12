@@ -677,7 +677,7 @@
       } catch(e) {}
     })();
 
-    const state = { scores: {}, reasons: {}, evidenceSummary: [] };
+    const state = { scores: {}, reasons: {}, evidenceSummary: [], feedback: {} };
 
     const criteriaEl = document.getElementById("criteria");
     const barsEl = document.getElementById("bars");
@@ -927,6 +927,32 @@
           card.appendChild(section);
         });
 
+        // Feedback хэсэг
+        const fbDiv = document.createElement("div");
+        fbDiv.style.cssText = "padding:12px 20px 16px;border-top:1px solid var(--line);background:#fafbff;";
+        fbDiv.innerHTML = `<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+          ${criterion.id.split(".")[0]} шалгуурын үзүүлэлтүүдээс таны хичээлд <strong>тохирохгүй</strong> эсвэл <strong>ойлгомжгүй</strong> заалт байна уу?
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${criterion.indicators.map(ind => `
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;
+              background:${state.feedback[ind.id] ? '#e0e7ff' : '#fff'};
+              border:1px solid ${state.feedback[ind.id] ? 'var(--primary)' : '#d1d5db'};
+              border-radius:8px;padding:5px 10px;">
+              <input type="checkbox" data-ind="${ind.id}" ${state.feedback[ind.id] ? 'checked' : ''}
+                style="accent-color:var(--primary);" />
+              ${ind.id}
+            </label>`).join("")}
+        </div>`;
+        fbDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
+          cb.addEventListener("change", () => {
+            state.feedback[cb.dataset.ind] = cb.checked;
+            renderCriteria();
+            renderSummary();
+          });
+        });
+        card.appendChild(fbDiv);
+
         criteriaEl.appendChild(card);
       });
     }
@@ -1072,7 +1098,13 @@
         criterionPercents: Object.fromEntries(rubric.map(c => [c.id, Math.round((criterionTotal(c)/c.max)*100)])),
         scores: state.scores,
         evidenceSummary: state.evidenceSummary,
-        exportedAt: new Date().toISOString()
+        exportedAt: new Date().toISOString(),
+        feedback: Object.fromEntries(
+          rubric.map(c => [
+            c.id.split(".")[0],
+            c.indicators.filter(ind => state.feedback[ind.id]).map(ind => ind.id).join(", ")
+          ])
+        )
       };
     }
 
@@ -1130,6 +1162,7 @@
       state.scores = {};
       state.reasons = {};
       state.evidenceSummary = [];
+      state.feedback = {};
       document.getElementById("courseCode").value = "";
       document.getElementById("schoolName").value = "";
       document.getElementById("evaluator").value = "";
