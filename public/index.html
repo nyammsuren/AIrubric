@@ -410,7 +410,7 @@
               <h3>Нэгтгэл</h3>
               <div class="big-score">
                 <div class="stat">
-                  <div class="label">ОНОО</div>
+                  <div class="label">нийт ОНОО</div>
                   <div class="value" id="totalScore">0</div>
                 </div>
                 <div class="stat">
@@ -723,7 +723,7 @@
     const radarCanvas = document.getElementById("radarChart");
     let radarChart = null;
 
-    // adviceMap нь рубрик засасан үед динамикаар тооцоологддог
+    // adviceMap нь рубрик зассан үед динамикаар тооцоологддог
     function getAdvice(indicatorId) {
       // Хэрэглэгч adviceMap тохируулсан бол ашиглах, үгүй бол ерөнхий зөвлөмж
       return adviceMap[indicatorId] || `${indicatorId} үзүүлэлтийг сайжруулах шаардлагатай.`;
@@ -828,7 +828,7 @@
     }
 
     function renderRadarChart(){
-      const labels = rubric.map((c, i) => [`Шалгуур ${i + 1}.`, c.title]);
+      const labels = rubric.map((c, i) => [`Шалгуур ${i + 1}.`]);
       const data = rubric.map(c => criterionTotal(c));
       const maxScore = rubric[0]?.max || 12;
 
