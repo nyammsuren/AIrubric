@@ -302,8 +302,12 @@
           <input id="evalDate" type="date" readonly />
         </div>
         <div class="field">
-          <label>Хичээлийн код</label>
-          <input id="courseCode" placeholder="Жишээ: M.IT203" />
+          <label>Хичээлийн нэр</label>
+          <input id="courseCode" placeholder="Жишээ: Компьютерийн сүлжээ" />
+        </div>
+        <div class="field">
+          <label>Сургуулийн нэр</label>
+          <input id="schoolName" placeholder="Жишээ: МУИС" />
         </div>
         <div class="field">
           <label>Үнэлгээ хийх багшийн код</label>
@@ -1027,6 +1031,7 @@
       const percent = Math.round((total/max)*100);
       return {
         courseCode: document.getElementById("courseCode").value,
+        schoolName: document.getElementById("schoolName").value,
         evaluator: document.getElementById("evaluator").value,
         evalDate: document.getElementById("evalDate").value,
         totalScore: total, maxScore: max, percent,
@@ -1043,7 +1048,7 @@
     async function submitEvaluation() {
       const payload = getPayload();
       if (!payload.courseCode || !payload.evaluator) {
-        showStatus("Хичээлийн код, үнэлгээ хийж буй багшийн нэрийг бүрэн оруулна уу.", false);
+        showStatus("Хичээлийн нэр, үнэлгээ хийж буй багшийн кодыг бүрэн оруулна уу.", false);
         return;
       }
       const unscored = rubric.flatMap(c => c.indicators).filter(i => state.scores[i.id] == null);
@@ -1095,6 +1100,7 @@
       state.reasons = {};
       state.evidenceSummary = [];
       document.getElementById("courseCode").value = "";
+      document.getElementById("schoolName").value = "";
       document.getElementById("evaluator").value = "";
       document.getElementById("evalDate").value = new Date().toISOString().split("T")[0];
       document.getElementById("canvasCourseId").value = "";

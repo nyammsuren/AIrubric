@@ -364,10 +364,10 @@ app.get("/api/canvas/courses", async (req, res) => {
     const instanceKey = req.query.instanceKey || req.query.instance;
     const instance = getInstance(instanceKey);
     if (!instance) return res.status(400).json({ ok: false, message: "Canvas instance тохируулагдаагүй байна." });
-    const data = await canvasGet(instance, "/api/v1/courses", {
-      per_page: 100,
-      search_term: req.query.search || ""
-    });
+    const params = { per_page: 100 };
+    if (req.query.search) params.search_term = req.query.search;
+    const data = await canvasGet(instance, "/api/v1/courses", params);
+    console.log(`Canvas courses fetched: ${data.length} for instance ${instanceKey}`);
     res.json({ ok: true, courses: data.map(c => ({ id: c.id, name: c.name, course_code: c.course_code })) });
   } catch (error) {
     res.status(500).json({ ok: false, message: error.message });
@@ -448,6 +448,7 @@ app.post("/api/evaluations", async (req, res) => {
     const entry = {
       id: Date.now(),
       courseCode: payload.courseCode,
+      schoolName: payload.schoolName || "",
       evaluator: payload.evaluator || "",
       evalDate: payload.evalDate || new Date().toISOString().split("T")[0],
       totalScore: payload.totalScore ?? 0,
@@ -474,6 +475,7 @@ app.post("/api/evaluations", async (req, res) => {
 
         const sheetPayload = {
           courseCode:      payload.courseCode || "",
+          schoolName:      payload.schoolName || "",
           evaluator:       payload.evaluator || "",
           evalDate:        payload.evalDate || "",
           totalScore:      payload.totalScore ?? 0,
