@@ -474,6 +474,7 @@ app.post("/api/evaluations", async (req, res) => {
         const sc = payload.scores || {};
 
         const sheetPayload = {
+          id:              entry.id,
           courseCode:      payload.courseCode || "",
           schoolName:      payload.schoolName || "",
           evaluator:       payload.evaluator || "",

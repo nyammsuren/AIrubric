@@ -1324,6 +1324,8 @@
 
       const q1 = form.survey_q1.value.trim();
       const q2 = form.survey_q2.value.trim();
+      if (!q1) { alert("1-р асуултыг бөглөнө үү."); form.survey_q1.focus(); return; }
+      if (!q2) { alert("2-р асуултыг бөглөнө үү."); form.survey_q2.focus(); return; }
       const exp = form.querySelector('input[name="survey_exp"]:checked');
       if (!exp) { alert("Багшлах туршлагаа сонгоно уу."); return; }
 
@@ -1364,12 +1366,12 @@
 
         <div class="survey-q">
           <label>1. Танай сургуулийн онлайн хичээлд тохирохгүй байсан үзүүлэлт байсан уу? Байсан бол аль шалгуурын аль үзүүлэлт, яагаад?</label>
-          <textarea name="survey_q1" placeholder="Хариултаа бичнэ үү..."></textarea>
+          <textarea name="survey_q1" placeholder="Хариултаа бичнэ үү..." required></textarea>
         </div>
 
         <div class="survey-q">
           <label>2. Нэмж болох шалгуур эсвэл үзүүлэлт байна уу? Ерөнхий санал, сэтгэгдэл?</label>
-          <textarea name="survey_q2" placeholder="Хариултаа бичнэ үү..."></textarea>
+          <textarea name="survey_q2" placeholder="Хариултаа бичнэ үү..." required></textarea>
         </div>
 
         <div class="survey-q">
