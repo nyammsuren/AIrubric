@@ -583,7 +583,7 @@
     // CVI — rubric indicator нэр ачаалж, CVI тооцно
     let indicatorMap = {};
     try {
-      const rRes = await fetch("/api/rubric");
+      const rRes = await fetch("/api/rubric", { headers: { "Authorization": `Bearer ${adminToken}` } });
       const rData = await rRes.json();
       if (rData.rubric) {
         rData.rubric.forEach(c => c.indicators.forEach(ind => { indicatorMap[ind.id] = ind.title; }));
@@ -1019,7 +1019,7 @@
 
   document.getElementById("downloadRubricBtn").addEventListener("click", async () => {
     try {
-      const res = await fetch("/api/rubric");
+      const res = await fetch("/api/rubric", { headers: { "Authorization": `Bearer ${adminToken}` } });
       const data = await res.json();
       const rubric = data.rubric || [];
       const rows = [["Шалгуур код","Шалгуур гарчиг","Үзүүлэлт код","Үзүүлэлт гарчиг",
