@@ -371,7 +371,7 @@
       <div class="criteria" id="criteria"></div>
 
       <div class="card" id="extraQCard" style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
-        <div style="font-size:10px;font-weight:700;color:var(--text);">Энэхүү судалгаа нь тус шалгуур бусад их дээд сургуулийн онлайн хичээлд хэр тохирч байгааг тодорхойлоход чиглэнэ. Хариулт бүрэн нууцлагдана. </div>
+        <div style="font-size:11px;font-weight:700;color:var(--text);">Энэхүү судалгаа нь тус шалгуур бусад их дээд сургуулийн онлайн хичээлд хэр тохирч байгааг тодорхойлоход чиглэнэ. Хариулт бүрэн нууцлагдана. </div>
 
         <div style="display:flex;flex-direction:column;gap:6px;">
           <label style="font-size:13px;color:var(--muted);">Энэхүү шалгуур нь таны онлайн хичээлийн онцлогт хэрэв тохирохгүй байсан бол яагаад?, Таны бодлоор шинээр нэмж болох ямар үзүүлэлт байна вэ?,  Шалгуурын дутагдалтай тал юу байна вэ?, Санал сэтгэгдлээ бичнэ үү.  </label>
@@ -711,7 +711,7 @@
       } catch(e) {}
     })();
 
-    const state = { scores: {}, reasons: {}, evidenceSummary: [], feedback: {} };
+    const state = { scores: {}, reasons: {}, evidenceSummary: [], feedback: {}, relevance: {} };
 
     const criteriaEl = document.getElementById("criteria");
     const barsEl = document.getElementById("bars");
@@ -958,6 +958,37 @@
           });
 
           section.appendChild(levels);
+
+          // Relevance rating
+          const relDiv = document.createElement("div");
+          relDiv.style.cssText = "padding:10px 20px 12px;border-top:1px solid #f1f5f9;background:#fdfeff;";
+          const relVal = state.relevance[indicator.id];
+          const relOptions = [
+            { v: 1, label: "Хамааралгүй" },
+            { v: 2, label: "Бага хамааралтай" },
+            { v: 3, label: "Хамааралтай" },
+            { v: 4, label: "Маш хамааралтай" }
+          ];
+          relDiv.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Энэ үзүүлэлт нь онлайн хичээлийн чанарыг үнэлэхэд хэр хамааралтай вэ?</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              ${relOptions.map(o => `
+                <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;
+                  padding:4px 9px;border-radius:7px;border:1px solid ${relVal === o.v ? 'var(--primary)' : '#e2e8f0'};
+                  background:${relVal === o.v ? '#eef2ff' : '#fff'};">
+                  <input type="radio" name="rel_${indicator.id}" value="${o.v}"
+                    ${relVal === o.v ? 'checked' : ''} style="accent-color:var(--primary);width:12px;height:12px;" />
+                  <span style="color:${relVal === o.v ? 'var(--primary)' : '#64748b'};font-weight:${relVal === o.v ? 700 : 400};">${o.v}. ${o.label}</span>
+                </label>`).join("")}
+            </div>`;
+          relDiv.querySelectorAll("input[type=radio]").forEach(r => {
+            r.addEventListener("change", () => {
+              state.relevance[indicator.id] = Number(r.value);
+              renderCriteria();
+              renderSummary();
+            });
+          });
+          section.appendChild(relDiv);
+
           card.appendChild(section);
         });
 
@@ -1160,7 +1191,8 @@
             c.id.split(".")[0],
             c.indicators.filter(ind => state.feedback[ind.id]).map(ind => ind.id).join(", ")
           ])
-        )
+        ),
+        relevance: { ...state.relevance }
       };
     }
 
@@ -1237,6 +1269,7 @@
       state.reasons = {};
       state.evidenceSummary = [];
       state.feedback = {};
+      state.relevance = {};
       document.getElementById("courseCode").value = "";
       document.getElementById("schoolName").value = "";
       document.getElementById("evaluator").value = "";
