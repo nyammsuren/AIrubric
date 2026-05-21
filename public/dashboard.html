@@ -82,6 +82,20 @@
 
     @media(max-width:900px){.stats{grid-template-columns:1fr 1fr};.charts-grid{grid-template-columns:1fr}}
     @media(max-width:600px){.stats{grid-template-columns:1fr};.detail-scores{grid-template-columns:1fr 1fr}}
+    /* CVI */
+    .cvi-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    .cvi-stat{background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;text-align:center}
+    .cvi-stat .cvi-val{font-size:26px;font-weight:900}
+    .cvi-stat .cvi-label{font-size:12px;color:var(--muted);margin-top:4px}
+    .cvi-table{width:100%;border-collapse:collapse}
+    .cvi-table th{padding:10px 14px;text-align:left;font-size:12px;font-weight:700;color:var(--muted);background:#f8faff;border-bottom:1px solid var(--line)}
+    .cvi-table td{padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+    .cvi-table .cri-header td{background:#eef3ff;font-weight:700;color:#2242bb;font-size:13px;padding:8px 14px}
+    .cvi-bar{height:6px;background:#edf1f7;border-radius:999px;overflow:hidden;margin-top:4px;min-width:60px}
+    .cvi-bar div{height:100%;border-radius:999px}
+    .cvi-ok{color:var(--green)}
+    .cvi-bad{color:var(--red)}
+    @media(max-width:600px){.cvi-summary-grid{grid-template-columns:1fr}}
     /* LOGIN */
     .login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);display:flex;align-items:center;justify-content:center;z-index:999;}
     .login-box{background:#fff;border-radius:24px;padding:36px 40px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(10,20,50,.25);text-align:center;}
@@ -174,6 +188,14 @@
       <h3>🎯 Чанарын хуваарилалт</h3>
       <div class="chart-wrap"><canvas id="qualityChart"></canvas></div>
     </div>
+  </div>
+
+  <div id="cviSection" class="card" style="display:none;margin-bottom:24px">
+    <div class="card-head">
+      <h2>📐 CVI — Агуулгын хүчинтэй байдлын индекс</h2>
+      <span id="cviRatersInfo" style="font-size:13px;color:var(--muted)"></span>
+    </div>
+    <div id="cviBody" style="padding:16px 20px 20px"></div>
   </div>
 
   <div class="card">
@@ -482,6 +504,14 @@
       try { evidenceSummary = JSON.parse(evidenceSummary); } catch { evidenceSummary = []; }
     }
 
+    const relevance = {};
+    for (const id of ["C1.1","C1.2","C1.3","C1.4","C2.1","C2.2","C2.3","C2.4",
+                      "C3.1","C3.2","C3.3","C3.4","C4.1","C4.2","C4.3","C4.4",
+                      "C5.1","C5.2","C5.3","C5.4","C6.1","C6.2","C6.3","C6.4"]) {
+      const k = "rel_" + id.replace(".", "_");
+      if (row[k] !== undefined && row[k] !== "") relevance[k] = Number(row[k]);
+    }
+
     return {
       id: row.id || `sheet_${idx}`,
       courseCode: String(row.courseCode || ""),
@@ -493,7 +523,8 @@
       quality: String(row.quality || ""),
       overallAiAdvice: String(row.overallAiAdvice || ""),
       evidenceSummary: Array.isArray(evidenceSummary) ? evidenceSummary : [],
-      criterionTotals
+      criterionTotals,
+      relevance
     };
   }
 
@@ -533,6 +564,17 @@
     renderStats(groupedEvals);
     renderTable(groupedEvals);
     renderCharts(allEvals);
+
+    // CVI — rubric indicator нэр ачаалж, CVI тооцно
+    let indicatorMap = {};
+    try {
+      const rRes = await fetch("/api/rubric");
+      const rData = await rRes.json();
+      if (rData.rubric) {
+        rData.rubric.forEach(c => c.indicators.forEach(ind => { indicatorMap[ind.id] = ind.title; }));
+      }
+    } catch {}
+    renderCVI(sheetEvals, indicatorMap);
   }
 
   function openAdminPage(mode) {
@@ -626,6 +668,107 @@
         }
       }
     });
+  }
+
+  // ===== CVI =====
+  const CVI_IND_IDS = [
+    "C1.1","C1.2","C1.3","C1.4",
+    "C2.1","C2.2","C2.3","C2.4",
+    "C3.1","C3.2","C3.3","C3.4",
+    "C4.1","C4.2","C4.3","C4.4",
+    "C5.1","C5.2","C5.3","C5.4",
+    "C6.1","C6.2","C6.3","C6.4"
+  ];
+  const CVI_CRIT_NAMES = {
+    "C1":"Зорилго, үр дүн, үнэлгээний уялдаа",
+    "C2":"Агуулгын чанар",
+    "C3":"Сургалтын дизайн",
+    "C4":"Харилцаа ба оролцоо",
+    "C5":"Үнэлгээ ба эргэх холбоо",
+    "C6":"Технологи ба хүртээмж"
+  };
+
+  function renderCVI(evals, indicatorMap) {
+    const section = document.getElementById("cviSection");
+    if (!evals || !evals.length) { section.style.display = "none"; return; }
+    const ratedEvals = evals.filter(e => e.relevance && Object.keys(e.relevance).length > 0);
+    if (!ratedEvals.length) { section.style.display = "none"; return; }
+
+    const n = ratedEvals.length;
+    document.getElementById("cviRatersInfo").textContent = `${n} үнэлгээчийн мэдээлэл дээр үндэслэсэн`;
+
+    const icvis = {};
+    for (const id of CVI_IND_IDS) {
+      const k = "rel_" + id.replace(".", "_");
+      const ratings = ratedEvals.map(e => e.relevance[k]).filter(v => v !== undefined && v >= 1 && v <= 4);
+      icvis[id] = ratings.length ? ratings.filter(v => v >= 3).length / ratings.length : null;
+    }
+
+    const validVals = CVI_IND_IDS.map(id => icvis[id]).filter(v => v !== null);
+    const sAve = validVals.length ? validVals.reduce((s,v) => s+v, 0) / validVals.length : null;
+    const sUA  = validVals.length ? validVals.filter(v => v === 1.0).length / CVI_IND_IDS.length : null;
+    const fmtCVI = v => v === null ? "—" : v.toFixed(2);
+    const colorClass = v => v === null ? "" : v >= 0.78 ? "cvi-ok" : "cvi-bad";
+
+    const summaryHtml = `
+      <div class="cvi-summary-grid">
+        <div class="cvi-stat">
+          <div class="cvi-val ${colorClass(sAve)}">${fmtCVI(sAve)}</div>
+          <div class="cvi-label">S-CVI/Ave — дундаж I-CVI</div>
+        </div>
+        <div class="cvi-stat">
+          <div class="cvi-val ${colorClass(sUA)}">${fmtCVI(sUA)}</div>
+          <div class="cvi-label">S-CVI/UA — I-CVI=1.00 байх хувь</div>
+        </div>
+        <div class="cvi-stat">
+          <div class="cvi-val">${n}</div>
+          <div class="cvi-label">Үнэлгээчдийн тоо</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        Шалгуур: I-CVI ≥ 0.78 — тохиромжтой &nbsp;|&nbsp; S-CVI/Ave ≥ 0.90 — маш сайн &nbsp;|&nbsp; Үнэлгээний хуваари: 1=Хамааралгүй, 2=Бага, 3=Хамааралтай, 4=Маш хамааралтай
+      </div>`;
+
+    let rows = "";
+    for (let ci = 1; ci <= 6; ci++) {
+      const cid = `C${ci}`;
+      rows += `<tr class="cri-header"><td colspan="6">${cid} — ${CVI_CRIT_NAMES[cid]}</td></tr>`;
+      for (let ii = 1; ii <= 4; ii++) {
+        const id = `${cid}.${ii}`;
+        const k = "rel_" + id.replace(".", "_");
+        const ratings = ratedEvals.map(e => e.relevance[k]).filter(v => v !== undefined && v >= 1 && v <= 4);
+        const icvi = icvis[id];
+        const title = indicatorMap && indicatorMap[id] ? indicatorMap[id] : "";
+        const shortTitle = title.length > 44 ? title.slice(0, 44) + "…" : title;
+        const pct = icvi !== null ? Math.round(icvi * 100) : 0;
+        const cls = colorClass(icvi);
+        const barColor = icvi === null ? "#ddd" : icvi >= 0.78 ? "var(--green)" : "var(--red)";
+        const statusText = icvi === null ? "—" : icvi >= 0.78 ? "✓ Тохиромжтой" : "✗ Хянах шаардлагатай";
+        rows += `<tr>
+          <td><strong>${id}</strong></td>
+          <td style="color:var(--muted);max-width:200px">${shortTitle}</td>
+          <td style="text-align:center">${ratings.length}</td>
+          <td><strong class="${cls}">${fmtCVI(icvi)}</strong></td>
+          <td style="min-width:90px">
+            <div class="cvi-bar"><div style="width:${pct}%;background:${barColor}"></div></div>
+            <div style="font-size:11px;color:var(--muted)">${pct}%</div>
+          </td>
+          <td class="${cls}" style="font-size:12px;white-space:nowrap">${statusText}</td>
+        </tr>`;
+      }
+    }
+
+    document.getElementById("cviBody").innerHTML = summaryHtml + `
+      <div style="overflow-x:auto">
+        <table class="cvi-table">
+          <thead><tr>
+            <th>Үзүүлэлт</th><th>Нэр</th><th style="text-align:center">Үнэлсэн</th>
+            <th>I-CVI</th><th>График</th><th>Дүгнэлт</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    section.style.display = "block";
   }
 
   // ===== BATCH EVAL =====
