@@ -901,8 +901,12 @@
       });
 
       const allFilled = rubric.flatMap(c => c.indicators).every(i => state.scores[i.id] != null);
-      if (allFilled && !overallAiTextEl.value.trim()) {
-        overallAiTextEl.value = getOverallAiAdvice();
+      if (allFilled) {
+        if (!overallAiTextEl.value.trim()) overallAiTextEl.value = getOverallAiAdvice();
+        document.getElementById("overallAiCard").style.display = "block";
+      } else {
+        document.getElementById("overallAiCard").style.display = "none";
+        overallAiTextEl.value = "";
       }
 
       renderRadarChart();
