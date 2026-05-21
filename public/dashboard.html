@@ -190,6 +190,11 @@
     </div>
   </div>
 
+  <div class="chart-card" id="schoolChartSection" style="display:none;margin-bottom:24px">
+    <h3>🏫 Сургуулиар дундаж оноо</h3>
+    <div id="schoolChartWrap" style="position:relative"><canvas id="schoolChart"></canvas></div>
+  </div>
+
   <div id="cviSection" class="card" style="display:none;margin-bottom:24px">
     <div class="card-head">
       <h2>📐 CVI — Агуулгын хүчинтэй байдлын индекс</h2>
@@ -523,6 +528,7 @@
     return {
       id: row.id || `sheet_${idx}`,
       courseCode: String(row.courseCode || ""),
+      schoolName: String(row.schoolName || ""),
       evaluator: String(row.evaluator || ""),
       evalDate: String(row.evalDate || "").slice(0, 10),
       totalScore: Number(row.totalScore || 0),
@@ -572,6 +578,7 @@
     renderStats(groupedEvals);
     renderTable(groupedEvals);
     renderCharts(allEvals);
+    renderSchoolChart(allEvals);
 
     // CVI — rubric indicator нэр ачаалж, CVI тооцно
     let indicatorMap = {};
@@ -603,6 +610,7 @@
   // ===== CHARTS =====
   let criterionChartInstance = null;
   let qualityChartInstance = null;
+  let schoolChartInstance = null;
 
   const CRITERION_LABELS = [
     "C1: Зорилго", "C2: Агуулга", "C3: Дизайн",
@@ -676,6 +684,69 @@
         }
       }
     });
+  }
+
+  function renderSchoolChart(evals) {
+    const section = document.getElementById("schoolChartSection");
+    const withSchool = evals.filter(e => e.schoolName && e.schoolName.trim());
+    if (!withSchool.length) { section.style.display = "none"; return; }
+
+    // Group by schoolName
+    const map = {};
+    for (const e of withSchool) {
+      const s = e.schoolName.trim();
+      if (!map[s]) map[s] = { sum: 0, count: 0 };
+      map[s].sum += e.percent;
+      map[s].count++;
+    }
+    const entries = Object.entries(map)
+      .map(([name, { sum, count }]) => ({ name, avg: Math.round(sum / count), count }))
+      .sort((a, b) => b.avg - a.avg);
+
+    if (entries.length < 2) { section.style.display = "none"; return; }
+
+    const labels = entries.map(e => e.name);
+    const data   = entries.map(e => e.avg);
+    const colors = data.map(v => v >= 90 ? "#16a34a" : v >= 75 ? "#315efb" : v >= 60 ? "#f59e0b" : "#ef4444");
+
+    // Height: at least 200px, 44px per school
+    document.getElementById("schoolChartWrap").style.height = Math.max(200, entries.length * 44) + "px";
+
+    if (schoolChartInstance) schoolChartInstance.destroy();
+    schoolChartInstance = new Chart(document.getElementById("schoolChart"), {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: "Дундаж оноо (%)",
+          data,
+          backgroundColor: colors,
+          borderRadius: 7,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const e = entries[ctx.dataIndex];
+                return ` ${e.avg}%  (${e.count} үнэлгээ)`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { beginAtZero: true, max: 100, grid: { color: "#edf1f7" },
+               ticks: { callback: v => v + "%" } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+    section.style.display = "block";
   }
 
   // ===== CVI =====
