@@ -624,6 +624,56 @@ app.get("/api/sheet-data", requireAdmin, async (req, res) => {
   }
 });
 
+app.post("/api/cvi-advice", requireAdmin, async (req, res) => {
+  try {
+    const { icvis, sAve, sUA, n, indicatorTitles } = req.body || {};
+    if (!icvis) return res.status(400).json({ ok: false, message: "CVI өгөгдөл дутуу байна." });
+
+    const lines = Object.entries(icvis)
+      .map(([id, v]) => {
+        const title = indicatorTitles?.[id] || id;
+        const label = v === null ? "— (үнэлэгдээгүй)" : `${Number(v).toFixed(2)} ${v >= 0.78 ? "✓" : "✗"}`;
+        return `${id} (${title}): ${label}`;
+      }).join("\n");
+
+    const fmtN = n ?? "?";
+    const fmtAve = sAve != null ? Number(sAve).toFixed(2) : "—";
+    const fmtUA  = sUA  != null ? Number(sUA).toFixed(2)  : "—";
+
+    const prompt = `Та онлайн сургалтын рубрикийн агуулгын хүчинтэй байдлын (CVI) шинжээч юм. Дараах үр дүнг дүгнэн монголоор зөвлөмж өг.
+
+Нийт эксперт: ${fmtN}
+S-CVI/Ave: ${fmtAve}  (стандарт: ≥ 0.78 тохиромжтой, ≥ 0.90 маш сайн)
+S-CVI/UA:  ${fmtUA}   (I-CVI = 1.00 байх үзүүлэлтийн хувь)
+
+Үзүүлэлт тус бүрийн I-CVI (≥ 0.78 = ✓ тохиромжтой, < 0.78 = ✗ хянах шаардлагатай):
+${lines}
+
+Дараах бүтцээр хариул:
+
+1. НИЙТ ДҮГНЭЛТ
+Рубрикийн нийт CVI-ийн талаар 2–3 өгүүлбэрт үнэлэ.
+
+2. АНХААРАЛ ШААРДЛАГАТАЙ ҮЗҮҮЛЭЛТҮҮД
+I-CVI < 0.78 байгаа үзүүлэлт бүрт: яагаад экспертүүд тохирохгүй гэж үзсэн байж болох, яаж агуулга эсвэл томьёоллыг сайжруулах тухай тайлбарла.
+
+3. РУБРИКИЙГ САЙЖРУУЛАХ ЗӨВЛӨМЖ
+3–5 тодорхой, хийж болох алхмыг нэрлэ.`;
+
+    const response = await openai.chat.completions.create({
+      model: OPENAI_MODEL,
+      temperature: 0.3,
+      messages: [{ role: "user", content: prompt }]
+    });
+
+    const advice = (response.choices?.[0]?.message?.content || "").trim();
+    res.json({ ok: true, advice });
+  } catch (error) {
+    console.error("[cvi-advice]", error);
+    res.status(500).json({ ok: false, message: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

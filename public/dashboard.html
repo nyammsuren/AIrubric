@@ -193,9 +193,16 @@
   <div id="cviSection" class="card" style="display:none;margin-bottom:24px">
     <div class="card-head">
       <h2>📐 CVI — Агуулгын хүчинтэй байдлын индекс</h2>
-      <span id="cviRatersInfo" style="font-size:13px;color:var(--muted)"></span>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span id="cviRatersInfo" style="font-size:13px;color:var(--muted)"></span>
+        <button class="btn btn-primary" id="cviAiBtn" style="padding:7px 14px;font-size:13px">🤖 AI дүгнэлт</button>
+      </div>
     </div>
     <div id="cviBody" style="padding:16px 20px 20px"></div>
+    <div id="cviAiResult" style="display:none;margin:0 20px 20px;background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🤖 AI ДҮГНЭЛТ — CVI ШИНЖИЛГЭЭ</div>
+      <div id="cviAiText" style="font-size:14px;line-height:1.8;white-space:pre-line;color:var(--text)"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -266,6 +273,7 @@
   let allEvals = [];
   let groupedEvals = [];
   let adminToken = localStorage.getItem("adminToken") || "";
+  let lastCviData = null;
 
   function groupByCourse(evals) {
     const map = {};
@@ -710,6 +718,10 @@
     const fmtCVI = v => v === null ? "—" : v.toFixed(2);
     const colorClass = v => v === null ? "" : v >= 0.78 ? "cvi-ok" : "cvi-bad";
 
+    lastCviData = { icvis, sAve, sUA, n, indicatorMap };
+    document.getElementById("cviAiResult").style.display = "none";
+    document.getElementById("cviAiText").textContent = "";
+
     const summaryHtml = `
       <div class="cvi-summary-grid">
         <div class="cvi-stat">
@@ -770,6 +782,42 @@
       </div>`;
     section.style.display = "block";
   }
+
+  document.getElementById("cviAiBtn").addEventListener("click", async () => {
+    if (!lastCviData) return;
+    const btn = document.getElementById("cviAiBtn");
+    const resultDiv = document.getElementById("cviAiResult");
+    const textDiv = document.getElementById("cviAiText");
+    btn.disabled = true;
+    btn.textContent = "⏳ Дүгнэж байна...";
+    resultDiv.style.display = "none";
+    try {
+      const res = await fetch("/api/cvi-advice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+        body: JSON.stringify({
+          icvis: lastCviData.icvis,
+          sAve: lastCviData.sAve,
+          sUA: lastCviData.sUA,
+          n: lastCviData.n,
+          indicatorTitles: lastCviData.indicatorMap
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        textDiv.textContent = data.advice;
+        resultDiv.style.display = "block";
+        resultDiv.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } else {
+        alert("AI алдаа: " + (data.message || "Тодорхойгүй алдаа"));
+      }
+    } catch (err) {
+      alert("Холбогдож чадсангүй: " + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "🤖 AI дүгнэлт";
+    }
+  });
 
   // ===== BATCH EVAL =====
   let batchRunning = false;
