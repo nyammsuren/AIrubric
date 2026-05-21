@@ -786,6 +786,30 @@
       return rubric.reduce((sum, criterion) => sum + criterionTotal(criterion), 0);
     }
 
+    async function fetchScoreAdvice() {
+      overallAiTextEl.value = "⏳ AI зөвлөмж бэлдэж байна...";
+      overallAiTextEl.disabled = true;
+      try {
+        const res = await fetch("/api/score-advice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scores: { ...state.scores },
+            rubric: rubric.map(c => ({
+              id: c.id, title: c.title,
+              indicators: c.indicators.map(i => ({ id: i.id, title: i.title }))
+            }))
+          })
+        });
+        const data = await res.json();
+        overallAiTextEl.value = data.ok ? data.advice : getOverallAiAdvice();
+      } catch {
+        overallAiTextEl.value = getOverallAiAdvice();
+      } finally {
+        overallAiTextEl.disabled = false;
+      }
+    }
+
     function getOverallAiAdvice(){
       const allIndicators = rubric.flatMap(c => c.indicators.map(ind => ({
         criterionTitle: c.title,
@@ -902,11 +926,12 @@
 
       const allFilled = rubric.flatMap(c => c.indicators).every(i => state.scores[i.id] != null);
       if (allFilled) {
-        if (!overallAiTextEl.value.trim()) overallAiTextEl.value = getOverallAiAdvice();
         document.getElementById("overallAiCard").style.display = "block";
+        if (!overallAiTextEl.value.trim()) fetchScoreAdvice();
       } else {
         document.getElementById("overallAiCard").style.display = "none";
         overallAiTextEl.value = "";
+        overallAiTextEl.disabled = false;
       }
 
       renderRadarChart();

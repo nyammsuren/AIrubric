@@ -624,6 +624,53 @@ app.get("/api/sheet-data", requireAdmin, async (req, res) => {
   }
 });
 
+app.post("/api/score-advice", async (req, res) => {
+  try {
+    const { scores, rubric: clientRubric } = req.body || {};
+    if (!scores || typeof scores !== "object") {
+      return res.status(400).json({ ok: false, message: "Оноо дутуу байна." });
+    }
+    const rubricMap = buildRubricMap(clientRubric);
+
+    const totalScore = Object.values(scores).reduce((s, v) => s + Number(v || 0), 0);
+    const percent = Math.round((totalScore / 72) * 100);
+
+    const lines = Object.entries(rubricMap)
+      .map(([id, title]) => `${id} (${title}): ${scores[id] ?? 0}/3`)
+      .join("\n");
+
+    const prompt = `Та онлайн хичээлийн чанарын мэргэжлийн үнэлгээч. Доорх үнэлгээний дүнг үндэслэн монголоор нэгдсэн дүгнэлт, зөвлөмж бич.
+
+Нийт оноо: ${totalScore}/72 (${percent}%)
+
+Үзүүлэлт бүрийн оноо (0=нотолгоо байхгүй, 1=хангалтгүй, 2=хангалттай, 3=маш сайн):
+${lines}
+
+Дараах бүтцээр хариул:
+
+1. НИЙТ ДҮГНЭЛТ
+Нийт оноо болон хичээлийн ерөнхий чанарын талаар 2 өгүүлбэр.
+
+2. АНХААРАЛ ШААРДЛАГАТАЙ ҮЗҮҮЛЭЛТҮҮД
+0 эсвэл 1 оноо авсан үзүүлэлт бүрт яг тухайн үзүүлэлтэд чиглэсэн тодорхой, хийж болохуйц 1-2 өгүүлбэрийн зөвлөмж өг.
+
+3. ДАРААГИЙН АЛХАМ
+Хичээлийг сайжруулахын тулд эхний ээлжид хийх 3 конкрет ажлыг нэрлэ.`;
+
+    const response = await openai.chat.completions.create({
+      model: OPENAI_MODEL,
+      temperature: 0.3,
+      messages: [{ role: "user", content: prompt }]
+    });
+
+    const advice = (response.choices?.[0]?.message?.content || "").trim();
+    res.json({ ok: true, advice });
+  } catch (error) {
+    console.error("[score-advice]", error);
+    res.status(500).json({ ok: false, message: error.message });
+  }
+});
+
 app.post("/api/cvi-advice", requireAdmin, async (req, res) => {
   try {
     const { icvis, sAve, sUA, n, indicatorTitles } = req.body || {};
