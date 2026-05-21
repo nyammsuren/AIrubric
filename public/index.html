@@ -475,7 +475,7 @@
       document.getElementById("evalDate").value = today;
 
       // sessionStorage-аас adminToken авч шалгах
-      const adminToken = sessionStorage.getItem("adminToken") || "";
+      const adminToken = sessionStorage.getItem("adminToken") || localStorage.getItem("adminToken") || "";
       if (adminToken) {
         try {
           const res = await fetch("/api/admin/verify", {

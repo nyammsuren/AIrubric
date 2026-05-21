@@ -599,7 +599,7 @@ app.get("/api/rubric", requireAdmin, (req, res) => {
       else if (html[i] === "]") { depth--; if (depth === 0) break; }
       i++;
     }
-    const rubric = JSON.parse(html.slice(begin, i + 1));
+    const rubric = new Function("return " + html.slice(begin, i + 1))();
     res.json({ ok: true, rubric });
   } catch (e) {
     res.status(500).json({ ok: false, message: e.message });
