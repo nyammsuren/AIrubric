@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Оношилгооны матриц — НН Рубрик</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root {
+      --bg:#f6f8fc; --card:#fff; --line:#e6ebf3; --text:#172033;
+      --muted:#64748b; --primary:#315efb; --primary-soft:#eef3ff;
+      --green:#16a34a; --amber:#f59e0b; --red:#ef4444;
+      --shadow:0 10px 28px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+    .wrap{max-width:1300px;margin:0 auto;padding:24px}
+
+    .hero{
+      background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);
+      color:#fff;border-radius:24px;padding:26px 32px;margin-bottom:28px;
+      box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    }
+    .hero h1{font-size:22px;font-weight:900;margin-bottom:4px}
+    .hero p{color:rgba(255,255,255,.85);font-size:13px}
+    .btn-back{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);
+      border-radius:12px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
+    .btn-back:hover{background:rgba(255,255,255,.28)}
+
+    .layout{display:grid;grid-template-columns:1fr 440px;gap:24px;align-items:start}
+    @media(max-width:1100px){.layout{grid-template-columns:1fr}}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+    .card-head{padding:14px 20px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px;color:var(--text)}
+
+    /* Input form */
+    .criterion-block{border-bottom:1px solid var(--line)}
+    .criterion-block:last-child{border-bottom:none}
+    .criterion-title{
+      padding:10px 20px;font-weight:700;font-size:12px;
+      color:var(--primary);background:#f8fbff;border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:8px;
+    }
+    .criterion-title .c-score{
+      margin-left:auto;font-size:12px;font-weight:800;color:var(--text);
+      background:#eef3ff;border-radius:8px;padding:2px 8px;
+    }
+    .indicator-row{
+      display:flex;align-items:center;padding:9px 20px;
+      border-bottom:1px solid #f5f7fc;gap:10px;
+    }
+    .indicator-row:last-child{border-bottom:none}
+    .ind-id{font-size:11px;color:var(--muted);min-width:34px;font-weight:600}
+    .ind-name{font-size:13px;color:var(--text);flex:1}
+    .score-btns{display:flex;gap:4px}
+    .score-btn{
+      width:30px;height:30px;border:1.5px solid var(--line);border-radius:8px;
+      background:#f8faff;color:var(--muted);font-size:12px;font-weight:700;
+      cursor:pointer;transition:.12s;
+    }
+    .score-btn:hover{border-color:var(--primary);color:var(--primary)}
+    .score-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+    /* Sidebar */
+    .results-sticky{position:sticky;top:24px;display:flex;flex-direction:column;gap:16px}
+
+    /* Totals */
+    .totals-row{display:flex;gap:10px;padding:14px 16px}
+    .total-box{flex:1;background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:center}
+    .total-box .val{font-size:20px;font-weight:900}
+    .total-box .lbl{font-size:11px;color:var(--muted);margin-top:2px}
+
+    /* Score table */
+    .score-table{width:100%;border-collapse:collapse}
+    .score-table td{padding:7px 14px;font-size:12px;border-bottom:1px solid var(--line);vertical-align:middle}
+    .score-table tr:last-child td{border-bottom:none}
+    .score-table .cid{font-weight:800;color:var(--primary);width:30px}
+    .score-table .cname{color:var(--muted);max-width:130px}
+    .score-table .cpct{font-weight:700;text-align:right;white-space:nowrap}
+    .mini-bar{height:5px;background:#edf1f7;border-radius:999px;overflow:hidden;min-width:50px}
+    .mini-bar div{height:100%;background:linear-gradient(90deg,#315efb,#6a8cff);border-radius:999px;transition:width .3s}
+
+    /* Index boxes */
+    .index-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 16px}
+    .index-box{background:#f8faff;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+    .index-box .val{font-size:26px;font-weight:900;color:var(--primary)}
+    .index-box .lbl{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}
+
+    /* Chart */
+    .chart-inner{padding:14px 16px 8px}
+    .chart-canvas-wrap{position:relative;height:300px}
+    .axis-note{padding:6px 16px 14px;font-size:11px;color:var(--muted);line-height:1.8}
+
+    /* Zone diagnosis */
+    .zone-card{margin:0 16px 14px;border-radius:14px;padding:13px 15px}
+    .zone-card .z-name{font-weight:800;font-size:14px;margin-bottom:6px}
+    .zone-card .z-desc{font-size:13px;line-height:1.75;color:#334155}
+    .zone-green{background:#eaf8f0;border:1px solid #bbf0d0}.zone-green .z-name{color:#16a34a}
+    .zone-blue{background:#eef3ff;border:1px solid #c7d9ff}.zone-blue .z-name{color:#2242bb}
+    .zone-red{background:#fff0f0;border:1px solid #ffcccc}.zone-red .z-name{color:#c0392b}
+    .zone-amber{background:#fffbeb;border:1px solid #fde68a}.zone-amber .z-name{color:#92400e}
+
+    /* Priority */
+    .priority-box{margin:0 16px 16px;background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:14px 15px}
+    .priority-box .p-head{font-size:11px;font-weight:700;color:var(--primary);margin-bottom:9px;letter-spacing:.4px}
+    .priority-item{font-size:13px;line-height:1.75;color:var(--text);margin-bottom:6px;padding-left:14px;position:relative}
+    .priority-item::before{content:"▸";position:absolute;left:0;color:var(--primary)}
+    .priority-item:last-child{margin-bottom:0}
+
+    .section-divider{height:1px;background:var(--line);margin:0 16px 14px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <div>
+      <h1>📊 Оношилгооны матриц</h1>
+      <p>Онлайн хичээлийн үнэлгээний дүнд үндэслэн байрлал тодорхойлох ба сайжруулах чиглэл тогтоох</p>
+    </div>
+    <a href="/" class="btn-back">← Үнэлгээ хийх</a>
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT: Score input -->
+    <div class="card">
+      <div class="card-head">📝 Үзүүлэлтийн оноо оруулах &nbsp;<span style="font-weight:400;font-size:12px;color:var(--muted)">(0 = байхгүй · 1 = хангалтгүй · 2 = хангалттай · 3 = маш сайн)</span></div>
+      <div id="inputBody"></div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div class="results-sticky">
+
+      <!-- Totals + score table -->
+      <div class="card">
+        <div class="card-head">📈 Шалгуурын дүн</div>
+        <div class="totals-row">
+          <div class="total-box">
+            <div class="val" id="totalScore">0/72</div>
+            <div class="lbl">Нийт оноо</div>
+          </div>
+          <div class="total-box">
+            <div class="val" id="totalPercent">0%</div>
+            <div class="lbl">Нийт хувь</div>
+          </div>
+          <div class="total-box">
+            <div class="val" id="qualityBadge" style="font-size:13px;padding-top:4px">—</div>
+            <div class="lbl">Чанарын түвшин</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 14px">
+          <table class="score-table" id="scoreTable"></table>
+        </div>
+      </div>
+
+      <!-- X/Y indices -->
+      <div class="card">
+        <div class="card-head">🧭 Матрицын индекс</div>
+        <div class="index-grid">
+          <div class="index-box">
+            <div class="val" id="xIndex">0.0</div>
+            <div class="lbl">X индекс<br>Суралцагч төвтэй байдал</div>
+          </div>
+          <div class="index-box">
+            <div class="val" id="yIndex">0.0</div>
+            <div class="lbl">Y индекс<br>Технологи, хүртээмж</div>
+          </div>
+        </div>
+        <div style="padding:0 16px 12px;font-size:11px;color:var(--muted);line-height:1.8">
+          X = (C1% + C4% + C5%) / 3 &nbsp;|&nbsp; Y = (C2% + C3% + C6%) / 3 &nbsp;|&nbsp; Босго = 60
+        </div>
+      </div>
+
+      <!-- Scatter chart + diagnosis -->
+      <div class="card">
+        <div class="card-head">🗺️ Оношилгооны матриц</div>
+        <div class="chart-inner">
+          <div class="chart-canvas-wrap">
+            <canvas id="matrixChart"></canvas>
+          </div>
+        </div>
+        <div class="axis-note">
+          X тэнхлэг: Багш/агуулга төвтэй &nbsp;←&nbsp; 60 &nbsp;→&nbsp; Суралцагч төвтэй<br>
+          Y тэнхлэг: Технологи, хүртээмж сул &nbsp;←&nbsp; 60 &nbsp;→&nbsp; Технологи, хүртээмж өндөр
+        </div>
+
+        <div class="section-divider"></div>
+        <div id="diagnosisZone"></div>
+        <div id="priorityBox" style="display:none">
+          <div class="priority-box">
+            <div class="p-head">⚡ САЙЖРУУЛАХ ТЭРГҮҮЛЭХ ЧИГЛЭЛ</div>
+            <div id="priorityContent"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== RUBRIC DATA =====
+const RUBRIC = [
+  { id:"C1", title:"Сургалтын зорилго, үр дүн, үнэлгээний уялдаа", indicators:[
+    {id:"C1.1", title:"CLO-ийн тодорхой байдал"},
+    {id:"C1.2", title:"CLO ба агуулгын нийцэл"},
+    {id:"C1.3", title:"CLO ба сургалтын үйл ажиллагаа"},
+    {id:"C1.4", title:"CLO ба үнэлгээний нийцэл"}
+  ]},
+  { id:"C2", title:"Агуулгын чанар", indicators:[
+    {id:"C2.1", title:"Шинжлэх ухааны үндэслэл"},
+    {id:"C2.2", title:"Эх сурвалж"},
+    {id:"C2.3", title:"Материалын боловсруулалт"},
+    {id:"C2.4", title:"Бодит хэрэглээ"}
+  ]},
+  { id:"C3", title:"Сургалтын дизайн", indicators:[
+    {id:"C3.1", title:"Бүтэц, логик дараалал"},
+    {id:"C3.2", title:"Танин мэдэхүйн ачаалал"},
+    {id:"C3.3", title:"Дизайн"},
+    {id:"C3.4", title:"Дотоод логик"}
+  ]},
+  { id:"C4", title:"Онлайн харилцаа ба оролцоо", indicators:[
+    {id:"C4.1", title:"Танин мэдэхүйн оролцоо"},
+    {id:"C4.2", title:"Нийгмийн оролцоо"},
+    {id:"C4.3", title:"Багшийн оролцоо"},
+    {id:"C4.4", title:"Хэлэлцүүлэг"}
+  ]},
+  { id:"C5", title:"Үнэлгээ ба эргэх холбоо", indicators:[
+    {id:"C5.1", title:"Явцын үнэлгээ"},
+    {id:"C5.2", title:"Нээлттэй байдал"},
+    {id:"C5.3", title:"Эргэх холбоо"},
+    {id:"C5.4", title:"Өөрийн/чацуутны үнэлгээ"}
+  ]},
+  { id:"C6", title:"Технологи ба хүртээмж", indicators:[
+    {id:"C6.1", title:"Орчны бүтэц"},
+    {id:"C6.2", title:"Дотоод зохион байгуулалт"},
+    {id:"C6.3", title:"Технологийн интеграц"},
+    {id:"C6.4", title:"Хүртээмж"}
+  ]}
+];
+
+const MATRIX_ZONES = {
+  Q1: {
+    name: "Дэмжигдсэн, суралцагч төвтэй онлайн сургалт",
+    desc: "Тухайн онлайн сургалт технологи, хүртээмжийн хувьд хангалттай бөгөөд суралцагчийн оролцоо, харилцаа, үнэлгээ, эргэх холбоо зохистой түвшинд байна.",
+    style: "zone-green", dot: "#16a34a"
+  },
+  Q2: {
+    name: "Технологи түшиглэсэн боловч багш/агуулга төвтэй онлайн сургалт",
+    desc: "Тухайн онлайн сургалт технологи, материал, хүртээмжийн хувьд боломжийн боловч суралцагчийн оролцоо, онлайн харилцаа, эргэх холбоо, суралцагч төвтэй зохион байгуулалт сул байна.",
+    style: "zone-blue", dot: "#315efb"
+  },
+  Q3: {
+    name: "Хязгаарлагдмал онлайн сургалт",
+    desc: "Тухайн онлайн сургалт технологи, хүртээмж болон суралцагч төвтэй зохион байгуулалтын аль алинд нь сайжруулалт шаардлагатай байна.",
+    style: "zone-red", dot: "#ef4444"
+  },
+  Q4: {
+    name: "Оролцоог дэмжсэн боловч технологийн дэмжлэг сул онлайн сургалт",
+    desc: "Тухайн онлайн сургалт суралцагчийн оролцоо, харилцаа, үнэлгээний хувьд боломжийн боловч технологи, хүртээмж, сургалтын хэрэглэгдэхүүн, зохион байгуулалтын дэмжлэгийг сайжруулах шаардлагатай байна.",
+    style: "zone-amber", dot: "#f59e0b"
+  }
+};
+
+const CRITERION_ADVICE = {
+  C1: "Сургалтын зорилго, үр дүн болон үнэлгээний уялдааг нягтлах, CLO-г хэмжигдэхүйц болгон дахин томьёолох шаардлагатай.",
+  C2: "Агуулгын шинжлэх ухааны үндэслэл, эх сурвалжийн чанар болон материалын боловсруулалтыг сайжруулах шаардлагатай.",
+  C3: "Сургалтын дизайн, агуулгын бүтэц, логик дараалал болон танин мэдэхүйн ачааллыг тэнцвэртэй болгох шаардлагатай.",
+  C4: "Онлайн харилцаа ба оролцооны хэсэгт суралцагч хоорондын болон багш-суралцагчийн харилцааг идэвхжүүлэх шаардлагатай.",
+  C5: "Үнэлгээ ба эргэх холбооны хэсэгт явцын үнэлгээ, нээлттэй шалгуур, цаг тухайд нь эргэх холбоог сайжруулах шаардлагатай.",
+  C6: "Технологи ба хүртээмжийн хэсэгт холбоос, файл, төхөөрөмжийн нийцэл, LMS-ийн ашиглахад хялбар байдлыг сайжруулах шаардлагатай."
+};
+
+// ===== STATE =====
+const scores = {};
+RUBRIC.forEach(c => c.indicators.forEach(i => { scores[i.id] = 0; }));
+
+// ===== CALCULATION FUNCTIONS =====
+
+function calculateCriterionScore(indicatorIds) {
+  return indicatorIds.reduce((sum, id) => sum + (scores[id] ?? 0), 0);
+}
+
+function calculatePercent(score, maxScore) {
+  return maxScore > 0 ? (score / maxScore) * 100 : 0;
+}
+
+function calculateXIndex(C1_percent, C4_percent, C5_percent) {
+  return (C1_percent + C4_percent + C5_percent) / 3;
+}
+
+function calculateYIndex(C2_percent, C3_percent, C6_percent) {
+  return (C2_percent + C3_percent + C6_percent) / 3;
+}
+
+function classifyMatrixPosition(X, Y, threshold = 60) {
+  if (X >= threshold && Y >= threshold) return "Q1";
+  if (X <  threshold && Y >= threshold) return "Q2";
+  if (X <  threshold && Y <  threshold) return "Q3";
+  return "Q4";
+}
+
+function getLowestCriteria(criteriaPercents) {
+  return Object.entries(criteriaPercents)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 2)
+    .map(([id]) => id);
+}
+
+function generateDiagnosticText(position, lowestCriteria) {
+  const zone = MATRIX_ZONES[position];
+  return {
+    name:       zone.name,
+    desc:       zone.desc,
+    style:      zone.style,
+    priorities: lowestCriteria.map(id => CRITERION_ADVICE[id]).filter(Boolean)
+  };
+}
+
+// ===== CHART =====
+let chartInstance = null;
+
+const quadrantPlugin = {
+  id: "quadrants",
+  beforeDraw(chart) {
+    const { ctx, chartArea: { left, top, right, bottom }, scales: { x, y } } = chart;
+    const mx = x.getPixelForValue(60);
+    const my = y.getPixelForValue(60);
+    ctx.save();
+    const fill = (color, rx, ry, rw, rh) => { ctx.fillStyle = color; ctx.fillRect(rx, ry, rw, rh); };
+    fill("rgba(22,163,74,.07)",  mx,   top,  right-mx, my-top);    // Q1 green
+    fill("rgba(49,94,251,.07)",  left, top,  mx-left,  my-top);    // Q2 blue
+    fill("rgba(239,68,68,.07)",  left, my,   mx-left,  bottom-my); // Q3 red
+    fill("rgba(245,158,11,.07)", mx,   my,   right-mx, bottom-my); // Q4 amber
+    // Threshold lines
+    ctx.strokeStyle = "rgba(100,116,139,.4)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(mx, top);  ctx.lineTo(mx, bottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left, my); ctx.lineTo(right, my);  ctx.stroke();
+    ctx.setLineDash([]);
+    // Corner labels
+    ctx.font = "600 10px Inter,system-ui,sans-serif";
+    ctx.fillStyle = "rgba(100,116,139,.55)";
+    ctx.textAlign = "left";
+    ctx.fillText("Дэмжигдсэн (Q1)",     mx+5,   top+13);
+    ctx.fillText("Технологи түшиглэсэн (Q2)", left+4, top+13);
+    ctx.fillText("Хязгаарлагдмал (Q3)", left+4, bottom-5);
+    ctx.fillText("Оролцоог дэмжсэн (Q4)", mx+5, bottom-5);
+    ctx.restore();
+  }
+};
+
+function renderChart(X, Y) {
+  const q = classifyMatrixPosition(X, Y);
+  const dotColor = MATRIX_ZONES[q].dot;
+  const canvasCtx = document.getElementById("matrixChart").getContext("2d");
+  if (chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(canvasCtx, {
+    type: "scatter",
+    plugins: [quadrantPlugin],
+    data: {
+      datasets: [{
+        data: [{ x: X, y: Y }],
+        backgroundColor: dotColor,
+        borderColor: "#fff",
+        borderWidth: 3,
+        pointRadius: 11,
+        pointHoverRadius: 14
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => [
+              ` X = ${ctx.parsed.x.toFixed(1)}   Y = ${ctx.parsed.y.toFixed(1)}`,
+              ` ${MATRIX_ZONES[classifyMatrixPosition(ctx.parsed.x, ctx.parsed.y)].name}`
+            ]
+          }
+        }
+      },
+      scales: {
+        x: {
+          min: 0, max: 100,
+          title: { display: true, text: "← Багш төвтэй  |  Суралцагч төвтэй →", font:{size:11}, color:"#64748b" },
+          grid: { color: "#f0f3f9" },
+          ticks: { stepSize: 20, callback: v => v + "%" }
+        },
+        y: {
+          min: 0, max: 100,
+          title: { display: true, text: "← Технологи сул  |  Технологи өндөр →", font:{size:11}, color:"#64748b" },
+          grid: { color: "#f0f3f9" },
+          ticks: { stepSize: 20, callback: v => v + "%" }
+        }
+      }
+    }
+  });
+}
+
+// ===== RENDER INPUT FORM =====
+function renderInputForm() {
+  const body = document.getElementById("inputBody");
+  RUBRIC.forEach(criterion => {
+    const block = document.createElement("div");
+    block.className = "criterion-block";
+    block.innerHTML = `
+      <div class="criterion-title">
+        ${criterion.id} &nbsp; ${criterion.title}
+        <span class="c-score" id="cscore_${criterion.id}">0/12</span>
+      </div>`;
+    criterion.indicators.forEach(ind => {
+      const row = document.createElement("div");
+      row.className = "indicator-row";
+      const btns = [0,1,2,3].map(v =>
+        `<button class="score-btn${scores[ind.id] === v ? " active" : ""}"
+           data-id="${ind.id}" data-val="${v}" type="button">${v}</button>`
+      ).join("");
+      row.innerHTML = `
+        <span class="ind-id">${ind.id}</span>
+        <span class="ind-name">${ind.title}</span>
+        <div class="score-btns">${btns}</div>`;
+      block.appendChild(row);
+    });
+    body.appendChild(block);
+  });
+
+  body.addEventListener("click", e => {
+    const btn = e.target.closest(".score-btn");
+    if (!btn) return;
+    const id  = btn.dataset.id;
+    const val = Number(btn.dataset.val);
+    scores[id] = val;
+    body.querySelectorAll(`.score-btn[data-id="${id}"]`).forEach(b => {
+      b.classList.toggle("active", Number(b.dataset.val) === val);
+    });
+    updateResults();
+  });
+}
+
+// ===== UPDATE RESULTS =====
+function updateResults() {
+  const criteriaPercents = {};
+  let total = 0;
+
+  RUBRIC.forEach(c => {
+    const sc = calculateCriterionScore(c.indicators.map(i => i.id));
+    const pct = calculatePercent(sc, 12);
+    criteriaPercents[c.id] = pct;
+    total += sc;
+    const el = document.getElementById(`cscore_${c.id}`);
+    if (el) el.textContent = `${sc}/12`;
+  });
+
+  const totalPct = calculatePercent(total, 72);
+  document.getElementById("totalScore").textContent = `${total}/72`;
+  document.getElementById("totalPercent").textContent = Math.round(totalPct) + "%";
+  const qLabel = totalPct >= 90 ? "Маш өндөр" : totalPct >= 75 ? "Сайн" : totalPct >= 60 ? "Дунд" : "Сул";
+  const qColor = totalPct >= 90 ? "#16a34a" : totalPct >= 75 ? "#315efb" : totalPct >= 60 ? "#b7791f" : "#c0392b";
+  const qBadge = document.getElementById("qualityBadge");
+  qBadge.textContent = qLabel;
+  qBadge.style.color = qColor;
+
+  // Score table
+  document.getElementById("scoreTable").innerHTML = RUBRIC.map(c => {
+    const pct = criteriaPercents[c.id];
+    return `<tr>
+      <td class="cid">${c.id}</td>
+      <td class="cname">${c.title}</td>
+      <td style="font-weight:700;white-space:nowrap">${Math.round(calculateCriterionScore(c.indicators.map(i=>i.id)))}/12</td>
+      <td><div class="mini-bar"><div style="width:${Math.round(pct)}%"></div></div></td>
+      <td class="cpct">${Math.round(pct)}%</td>
+    </tr>`;
+  }).join("");
+
+  // Indices
+  const X = calculateXIndex(criteriaPercents.C1, criteriaPercents.C4, criteriaPercents.C5);
+  const Y = calculateYIndex(criteriaPercents.C2, criteriaPercents.C3, criteriaPercents.C6);
+  document.getElementById("xIndex").textContent = X.toFixed(1);
+  document.getElementById("yIndex").textContent = Y.toFixed(1);
+
+  // Chart
+  renderChart(X, Y);
+
+  // Diagnosis
+  const position = classifyMatrixPosition(X, Y);
+  const lowest   = getLowestCriteria(criteriaPercents);
+  const diag     = generateDiagnosticText(position, lowest);
+
+  document.getElementById("diagnosisZone").innerHTML = `
+    <div class="zone-card ${diag.style}">
+      <div class="z-name">📍 ${diag.name}</div>
+      <div class="z-desc">${diag.desc}</div>
+    </div>`;
+
+  const prioEl = document.getElementById("priorityBox");
+  prioEl.style.display = "block";
+  document.getElementById("priorityContent").innerHTML =
+    diag.priorities.map(p => `<div class="priority-item">${p}</div>`).join("");
+}
+
+// ===== INIT =====
+renderInputForm();
+updateResults();
+</script>
+</body>
+</html>
