@@ -190,6 +190,21 @@
     </div>
   </div>
 
+  <div class="chart-card" id="diagScatterSection" style="display:none;margin-bottom:24px">
+    <h3>📊 Хичээлүүдийн оношилгооны матриц</h3>
+    <div style="position:relative;height:440px"><canvas id="diagScatterChart"></canvas></div>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.9;display:flex;gap:16px;flex-wrap:wrap">
+      <span>X тэнхлэг: Багш/агуулга төвтэй ← 60 → Суралцагч төвтэй</span>
+      <span>Y тэнхлэг: Технологи сул ← 60 → Технологи өндөр</span>
+      <span style="display:flex;gap:10px;flex-wrap:wrap">
+        <span><span style="color:#16a34a">●</span> Дэмжигдсэн, суралцагч төвтэй</span>
+        <span><span style="color:#315efb">●</span> Технологи түшиглэсэн</span>
+        <span><span style="color:#f59e0b">●</span> Оролцоог дэмжсэн, технологи сул</span>
+        <span><span style="color:#ef4444">●</span> Хязгаарлагдмал</span>
+      </span>
+    </div>
+  </div>
+
   <div class="chart-card" id="schoolChartSection" style="display:none;margin-bottom:24px">
     <h3>🏫 Сургуулиар дундаж оноо</h3>
     <div id="schoolChartWrap" style="position:relative"><canvas id="schoolChart"></canvas></div>
@@ -575,6 +590,7 @@
     renderStats(groupedEvals);
     renderTable(groupedEvals);
     renderCharts(allEvals);
+    renderDiagnosticScatter(groupedEvals);
     renderSchoolChart(allEvals);
 
     // CVI — rubric indicator нэр ачаалж, CVI тооцно
@@ -681,6 +697,122 @@
         }
       }
     });
+  }
+
+  let diagScatterInstance = null;
+
+  const diagScatterBgPlugin = {
+    id: "diagScatterBg",
+    beforeDraw(chart) {
+      const { ctx, chartArea: { left, top, right, bottom }, scales: { x, y } } = chart;
+      const mx = x.getPixelForValue(60), my = y.getPixelForValue(60);
+      ctx.save();
+      const f = (c, rx, ry, rw, rh) => { ctx.fillStyle = c; ctx.fillRect(rx, ry, rw, rh); };
+      f("rgba(22,163,74,.07)",  mx,   top,  right-mx, my-top);
+      f("rgba(49,94,251,.07)",  left, top,  mx-left,  my-top);
+      f("rgba(239,68,68,.07)",  left, my,   mx-left,  bottom-my);
+      f("rgba(245,158,11,.07)", mx,   my,   right-mx, bottom-my);
+      ctx.strokeStyle = "rgba(100,116,139,.35)";
+      ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+      ctx.beginPath(); ctx.moveTo(mx, top);  ctx.lineTo(mx, bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(left, my); ctx.lineTo(right, my);  ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = "600 11px Inter,system-ui,sans-serif";
+      ctx.fillStyle = "rgba(100,116,139,.5)";
+      ctx.textAlign = "left";
+      ctx.fillText("Дэмжигдсэн (Q1)",          mx+6,   top+14);
+      ctx.fillText("Технологи түшиглэсэн (Q2)", left+6, top+14);
+      ctx.fillText("Хязгаарлагдмал (Q3)",       left+6, bottom-6);
+      ctx.fillText("Оролцоог дэмжсэн (Q4)",     mx+6,   bottom-6);
+      ctx.restore();
+    },
+    afterDraw(chart) {
+      const { ctx, scales: { x, y } } = chart;
+      const meta = chart.getDatasetMeta(0);
+      ctx.save();
+      ctx.font = "600 11px Inter,system-ui,sans-serif";
+      ctx.textAlign = "center";
+      meta.data.forEach((pt, i) => {
+        const label = chart.data.datasets[0].labels?.[i] || "";
+        if (!label) return;
+        ctx.fillStyle = "#334155";
+        ctx.fillText(label, pt.x, pt.y - 14);
+      });
+      ctx.restore();
+    }
+  };
+
+  const DIAG_ZONE_NAMES = {
+    Q1: "Дэмжигдсэн, суралцагч төвтэй онлайн сургалт",
+    Q2: "Технологи түшиглэсэн боловч багш/агуулга төвтэй онлайн сургалт",
+    Q3: "Хязгаарлагдмал онлайн сургалт",
+    Q4: "Оролцоог дэмжсэн боловч технологийн дэмжлэг сул онлайн сургалт"
+  };
+  const DIAG_DOT_COLORS = { Q1:"#16a34a", Q2:"#315efb", Q3:"#ef4444", Q4:"#f59e0b" };
+
+  function diagQuadrant(X, Y) {
+    if (X >= 60 && Y >= 60) return "Q1";
+    if (X <  60 && Y >= 60) return "Q2";
+    if (X <  60 && Y <  60) return "Q3";
+    return "Q4";
+  }
+
+  function renderDiagnosticScatter(groups) {
+    const section = document.getElementById("diagScatterSection");
+    if (!groups || !groups.length) { section.style.display = "none"; return; }
+
+    const points = groups.map(g => {
+      const ct = g.criterionTotals || {};
+      const p = k => ((Number(ct[k]) || 0) / 12) * 100;
+      const X = (p("C1.Шалгуур 1") + p("C4.Шалгуур 4") + p("C5.Шалгуур 5")) / 3;
+      const Y = (p("C2.Шалгуур 2") + p("C3.Шалгуур 3") + p("C6.Шалгуур 6")) / 3;
+      return { x: X, y: Y, label: g.courseCode, percent: g.percent, q: diagQuadrant(X, Y) };
+    });
+
+    if (diagScatterInstance) diagScatterInstance.destroy();
+    diagScatterInstance = new Chart(document.getElementById("diagScatterChart"), {
+      type: "scatter",
+      plugins: [diagScatterBgPlugin],
+      data: {
+        datasets: [{
+          data: points.map(p => ({ x: p.x, y: p.y })),
+          labels: points.map(p => p.label),
+          backgroundColor: points.map(p => DIAG_DOT_COLORS[p.q]),
+          borderColor: "#fff",
+          borderWidth: 2,
+          pointRadius: 9,
+          pointHoverRadius: 12
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => {
+                const p = points[ctx.dataIndex];
+                return [
+                  ` ${p.label}`,
+                  ` X: ${p.x.toFixed(1)}   Y: ${p.y.toFixed(1)}   Нийт: ${p.percent}%`,
+                  ` ${DIAG_ZONE_NAMES[p.q]}`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: { min: 0, max: 100, grid: { color: "#f0f3f9" },
+               title: { display: true, text: "← Багш төвтэй  |  Суралцагч төвтэй →", font: { size: 11 }, color: "#64748b" },
+               ticks: { stepSize: 20, callback: v => v + "%" } },
+          y: { min: 0, max: 100, grid: { color: "#f0f3f9" },
+               title: { display: true, text: "← Технологи сул  |  Технологи өндөр →", font: { size: 11 }, color: "#64748b" },
+               ticks: { stepSize: 20, callback: v => v + "%" } }
+        }
+      }
+    });
+    section.style.display = "block";
   }
 
   function renderSchoolChart(evals) {
