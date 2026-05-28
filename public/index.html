@@ -344,24 +344,6 @@
           <label>Үнэлгээ хийх багшийн код</label>
           <input id="evaluator" placeholder="Жишээ: Эксперт 1" />
         </div>
-        <div class="field" id="instancePickerWrap" style="display:none;">
-          <label>Canvas аккаунт</label>
-          <select id="instanceSelect" style="width:100%;border:none;outline:none;background:transparent;color:#fff;font-size:14px;cursor:pointer;">
-            <option value="" disabled>Ачааллаж байна...</option>
-          </select>
-        </div>
-        <div class="field course-picker" id="coursePickerWrap" style="display:none;">
-          <label>Canvas course</label>
-          <input id="courseSearchInput" placeholder="Хичээл хайх..." autocomplete="off" />
-          <input type="hidden" id="canvasCourseId" />
-          <div class="course-dropdown" id="courseDropdown"></div>
-        </div>
-        <div id="canvasImportWrap" style="display:none;">
-          <button id="canvasImportBtn"
-            style="width:100%;height:100%;background:rgba(255,255,255,.22);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer;transition:.2s;">
-            🤖 AI үнэлгээ
-          </button>
-        </div>
         <div id="statusBoxHero" class="status" style="font-size:12px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;display:none;"></div>
       </div>
     </section>
@@ -512,9 +494,6 @@
             const mode = new URLSearchParams(window.location.search).get("mode");
             document.querySelector(".hero-actions").style.display = "block";
             document.getElementById("dashboardLink").style.display = "block";
-            document.getElementById("canvasImportWrap").style.display = "block";
-            document.getElementById("instancePickerWrap").style.display = "block";
-            document.getElementById("coursePickerWrap").style.display = "block";
             // overallAiCard always visible
 
             // Submit товч → sidebar дээш
@@ -525,8 +504,6 @@
 
             if (mode === "rubric") {
               setTimeout(() => openEditor(), 300);
-            } else if (mode === "ai") {
-              document.getElementById("instancePickerWrap").scrollIntoView({ behavior: "smooth" });
             }
           }
         } catch {}
@@ -1440,173 +1417,12 @@
       document.getElementById("schoolName").value = "";
       document.getElementById("evaluator").value = "";
       document.getElementById("evalDate").value = new Date().toISOString().split("T")[0];
-      document.getElementById("canvasCourseId").value = "";
-      document.getElementById("courseSearchInput").value = "";
       document.getElementById("overallAiText").value = "";
       document.getElementById("evidenceSummaryBox").style.display = "none";
       document.getElementById("statusBoxBottom").textContent = "";
       renderCriteria();
       renderSummary();
     });
-
-    // ===== CANVAS IMPORT =====
-    function normalizeAiScores(aiScores){
-      const normalized = {};
-      Object.entries(aiScores || {}).forEach(([k,v]) => {
-        if (/^C\d\.\d$/.test(k)) {
-          const num = Number(v);
-          if (!Number.isNaN(num)) normalized[k] = Math.max(0, Math.min(3, num));
-        }
-      });
-      return normalized;
-    }
-
-    function applyAiEvaluation(result){
-      const aiScores = normalizeAiScores(result.aiScores);
-      Object.entries(aiScores).forEach(([key, value]) => { state.scores[key] = value; });
-      state.reasons = result.reasons || {};
-      state.evidenceSummary = result.evidenceSummary || [];
-      if (result.courseCode) document.getElementById("courseCode").value = result.courseCode;
-      if (result.courseId) document.getElementById("canvasCourseId").value = String(result.courseId);
-      if (result.overallAdvice) overallAiTextEl.value = result.overallAdvice;
-      renderEvidenceSummary(result.evidenceSummary || []);
-      renderCriteria();
-      renderSummary();
-    }
-
-    async function importFromCanvas(){
-      const courseId = document.getElementById("canvasCourseId").value.trim();
-      if (!courseId) { showStatus("Canvas course-ийг жагсаалтаас сонгоно уу.", false); return; }
-      const evaluator = document.getElementById("evaluator").value.trim();
-      try {
-        showStatus("Canvas-аас өгөгдөл татаж, AI үнэлгээ хийж байна...", true);
-        renderEvidenceSummary(["Canvas-аас нотолгоо уншиж байна..."]);
-        const instanceKey = document.getElementById("instanceSelect").value;
-        const res = await fetch("/api/canvas/analyze-course", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseId, instanceKey, evaluator: evaluator || "AI үнэлэгч", rubric })
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          showStatus(data.message || "Canvas AI үнэлгээ хийхэд алдаа гарлаа.", false);
-          renderEvidenceSummary(["Алдаа гарсан тул нотолгоог харуулж чадсангүй."]);
-          return;
-        }
-        applyAiEvaluation(data);
-        showStatus("Canvas course дээр үндэслэн AI үнэлгээ бөглөгдлөө.", true);
-      } catch (err) {
-        showStatus("Canvas integration алдаа гарлаа.", false);
-        renderEvidenceSummary(["Canvas integration алдаа гарлаа."]);
-      }
-    }
-
-    // ===== INSTANCE SELECTOR =====
-    (function(){
-      const sel = document.getElementById("instanceSelect");
-      fetch("/api/canvas/instances")
-        .then(r => r.json())
-        .then(data => {
-          if (data.ok && data.instances.length > 0) {
-            sel.innerHTML = data.instances.map(inst =>
-              `<option value="${inst.key}">${inst.name}</option>`
-            ).join("");
-          } else {
-            sel.innerHTML = `<option value="">Instance тохируулагдаагүй</option>`;
-          }
-        })
-        .catch(() => { sel.innerHTML = `<option value="">Холбогдож чадсангүй</option>`; });
-
-      // instance солигдоход курсийн сонголтыг цэвэрлэнэ
-      sel.addEventListener("change", () => {
-        document.getElementById("courseSearchInput").value = "";
-        document.getElementById("canvasCourseId").value = "";
-      });
-    })();
-
-    // ===== COURSE PICKER DROPDOWN =====
-    (function(){
-      const searchInput = document.getElementById("courseSearchInput");
-      const hiddenId    = document.getElementById("canvasCourseId");
-      const dropdown    = document.getElementById("courseDropdown");
-      let allCourses    = [];
-      let loaded        = false;
-      let debounceTimer = null;
-
-      function openDropdown(){ dropdown.classList.add("open"); }
-      function closeDropdown(){ dropdown.classList.remove("open"); }
-
-      function renderOptions(courses){
-        if (!courses.length){
-          dropdown.innerHTML = `<div class="course-option empty">Хичээл олдсонгүй</div>`;
-          return;
-        }
-        dropdown.innerHTML = courses.map(c => `
-          <div class="course-option" data-id="${c.id}" data-name="${c.name || c.course_code}">
-            <div>${c.name || c.course_code}</div>
-            <div class="course-code">${c.course_code || ""} · ID: ${c.id}</div>
-          </div>`).join("");
-
-        dropdown.querySelectorAll(".course-option").forEach(el => {
-          el.addEventListener("click", () => {
-            hiddenId.value     = el.dataset.id;
-            searchInput.value  = el.dataset.name;
-            closeDropdown();
-          });
-        });
-      }
-
-      function filterAndRender(query){
-        const q = query.toLowerCase();
-        const filtered = allCourses.filter(c =>
-          (c.name || "").toLowerCase().includes(q) ||
-          (c.course_code || "").toLowerCase().includes(q) ||
-          String(c.id).includes(q)
-        );
-        renderOptions(filtered);
-      }
-
-      async function loadCourses(){
-        loaded = false;
-        dropdown.innerHTML = `<div class="course-option loading">Ачааллаж байна...</div>`;
-        openDropdown();
-        const instanceKey = document.getElementById("instanceSelect").value;
-        try {
-          const res  = await fetch(`/api/canvas/courses?instance=${encodeURIComponent(instanceKey)}`);
-          const data = await res.json();
-          if (data.ok && Array.isArray(data.courses)){
-            allCourses = data.courses;
-            loaded = true;
-            renderOptions(allCourses);
-          } else {
-            dropdown.innerHTML = `<div class="course-option empty">Жагсаалт татахад алдаа гарлаа</div>`;
-          }
-        } catch {
-          dropdown.innerHTML = `<div class="course-option empty">Сервертэй холбогдож чадсангүй</div>`;
-        }
-      }
-
-      searchInput.addEventListener("focus", () => {
-        if (!loaded) loadCourses();
-        else { filterAndRender(searchInput.value); openDropdown(); }
-      });
-
-      searchInput.addEventListener("input", () => {
-        hiddenId.value = "";
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          if (!loaded) return;
-          filterAndRender(searchInput.value);
-          openDropdown();
-        }, 180);
-      });
-
-      document.addEventListener("click", e => {
-        if (!document.getElementById("coursePickerWrap").contains(e.target)) closeDropdown();
-      });
-    })();
-
-    document.getElementById("canvasImportBtn").addEventListener("click", importFromCanvas);
 
     overallAiTextEl.addEventListener("input", function(){
       this.style.height = "auto";
