@@ -432,6 +432,14 @@
             <div>60–74% → Дунд зэргийн засвар хийх шаардлагатай</div>
             <div>&lt;60% → Сайжруулах шаардлагатай</div>
           </div>
+          <div style="padding:12px 20px 16px">
+            <a href="/diagnostic.html" target="_blank"
+               style="display:block;text-align:center;background:#eef3ff;color:#315efb;
+                      border-radius:12px;padding:10px;font-size:13px;font-weight:700;
+                      text-decoration:none;border:1px solid #c7d9ff;">
+              📊 Оношилгооны матриц харах
+            </a>
+          </div>
         </div>
 
         <div class="card overall-ai" id="overallAiCard" style="display:none;">
@@ -896,6 +904,7 @@
     }
 
     function renderSummary(){
+      try { localStorage.setItem("nnrubric_diag_scores", JSON.stringify(state.scores)); } catch(e) {}
       const total = totalScore();
       const max = rubric.reduce((s, c) => s + c.max, 0);
       const percent = Math.round((total / max) * 100);
