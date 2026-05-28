@@ -666,22 +666,10 @@
   let diagScatterPairs = [];
 
   function findSequentialPairs(points) {
-    const map = {};
-    points.forEach((p, i) => {
-      const m = p.label.match(/^(.*?)(\d+)$/);
-      if (!m) return;
-      const key = m[1].trim();
-      if (!map[key]) map[key] = [];
-      map[key].push({ n: parseInt(m[2]), i });
-    });
-    const pairs = [];
-    Object.values(map).forEach(group => {
-      group.sort((a, b) => a.n - b.n);
-      for (let k = 0; k < group.length - 1; k++) {
-        pairs.push([group[k].i, group[k + 1].i]);
-      }
-    });
-    return pairs;
+    const i1 = points.findIndex(p => p.label === "КС1");
+    const i2 = points.findIndex(p => p.label === "КС2");
+    if (i1 !== -1 && i2 !== -1) return [[i1, i2]];
+    return [];
   }
 
   const diagScatterBgPlugin = {
