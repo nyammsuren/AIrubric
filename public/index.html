@@ -434,7 +434,7 @@
           </div>
         </div>
 
-        <div class="card" id="diagCard" style="display:none;padding:18px 20px;">
+        <div class="card" id="diagCard" style="padding:18px 20px;">
           <div style="font-weight:700;font-size:14px;margin-bottom:14px">📊 Оношилгооны матриц</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
             <div style="background:#f8faff;border:1px solid #e6ebf3;border-radius:12px;padding:10px;text-align:center">
@@ -460,7 +460,7 @@
           </div>
         </div>
 
-        <div class="card overall-ai" id="overallAiCard" style="display:none;">
+        <div class="card overall-ai" id="overallAiCard">
           <h3 style="margin:0 0 10px;font-size:22px;">Нэгдсэн зөвлөмж</h3>
           <textarea id="overallAiText"
             style="width:100%;min-height:300px;border:1px solid #e6ebf3;border-radius:16px;
@@ -515,7 +515,7 @@
             document.getElementById("canvasImportWrap").style.display = "block";
             document.getElementById("instancePickerWrap").style.display = "block";
             document.getElementById("coursePickerWrap").style.display = "block";
-            document.getElementById("overallAiCard").style.display = "block";
+            // overallAiCard always visible
 
             // Submit товч → sidebar дээш
             const side = document.querySelector(".side");
@@ -885,7 +885,7 @@
           <span style="position:absolute;left:0;color:#315efb">▸</span>${DIAG_CRIT_ADVICE[id]}
         </div>`).join("");
 
-      document.getElementById("diagCard").style.display = "block";
+      // diagCard always visible
     }
 
     function showStatus(msg, ok=true){
@@ -1057,22 +1057,18 @@
         barsEl.appendChild(box);
       });
 
+      // Criterion percentages for diagnostic (always rendered)
+      const cpcts = {};
+      rubric.forEach(c => {
+        cpcts[c.id.split(".")[0]] = Math.round(criterionTotal(c) / c.max * 100);
+      });
+      renderDiagnostic(cpcts);
+
       const allFilled = rubric.flatMap(c => c.indicators).every(i => state.scores[i.id] != null);
       if (allFilled) {
-        // Criterion percentages for diagnostic
-        const cpcts = {};
-        rubric.forEach(c => {
-          cpcts[c.id.split(".")[0]] = Math.round(criterionTotal(c) / c.max * 100);
-        });
-        renderDiagnostic(cpcts);
-
-        document.getElementById("overallAiCard").style.display = "block";
         if (!overallAiTextEl.value.trim()) fetchScoreAdvice();
       } else {
-        document.getElementById("diagCard").style.display = "none";
-        document.getElementById("overallAiCard").style.display = "none";
-        overallAiTextEl.value = "";
-        overallAiTextEl.disabled = false;
+        if (!overallAiTextEl.value.trim()) overallAiTextEl.disabled = false;
       }
 
       renderRadarChart();
