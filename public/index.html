@@ -432,13 +432,31 @@
             <div>60–74% → Дунд зэргийн засвар хийх шаардлагатай</div>
             <div>&lt;60% → Сайжруулах шаардлагатай</div>
           </div>
-          <div style="padding:12px 20px 16px">
-            <a href="/diagnostic.html" target="_blank"
-               style="display:block;text-align:center;background:#eef3ff;color:#315efb;
-                      border-radius:12px;padding:10px;font-size:13px;font-weight:700;
-                      text-decoration:none;border:1px solid #c7d9ff;">
-              📊 Оношилгооны матриц харах
-            </a>
+        </div>
+
+        <div class="card" id="diagCard" style="display:none;padding:18px 20px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:14px">📊 Оношилгооны матриц</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:#f8faff;border:1px solid #e6ebf3;border-radius:12px;padding:10px;text-align:center">
+              <div style="font-size:22px;font-weight:900;color:#315efb" id="diagX">—</div>
+              <div style="font-size:11px;color:#64748b;margin-top:3px">X индекс<br><span style="opacity:.7">(C1+C4+C5)/3</span></div>
+            </div>
+            <div style="background:#f8faff;border:1px solid #e6ebf3;border-radius:12px;padding:10px;text-align:center">
+              <div style="font-size:22px;font-weight:900;color:#315efb" id="diagY">—</div>
+              <div style="font-size:11px;color:#64748b;margin-top:3px">Y индекс<br><span style="opacity:.7">(C2+C3+C6)/3</span></div>
+            </div>
+          </div>
+          <div style="position:relative;height:260px;margin-bottom:10px">
+            <canvas id="diagChart"></canvas>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:14px;line-height:1.8">
+            X: Багш/агуулга төвтэй ← 60 → Суралцагч төвтэй<br>
+            Y: Технологи сул ← 60 → Технологи өндөр
+          </div>
+          <div id="diagZone" style="border-radius:12px;padding:12px 14px;margin-bottom:12px"></div>
+          <div style="background:#f4f7ff;border:1px solid #dbe5ff;border-radius:12px;padding:12px 14px">
+            <div style="font-size:11px;font-weight:700;color:#315efb;margin-bottom:8px">⚡ САЙЖРУУЛАХ ТЭРГҮҮЛЭХ ЧИГЛЭЛ</div>
+            <div id="diagPriority" style="font-size:13px;line-height:1.75;color:#172033"></div>
           </div>
         </div>
 
@@ -764,6 +782,112 @@
       "C6.4": "Сабтайтл, alt text, уншихад ээлтэй өнгө, олон хэлбэрийн контент ашиглан хүртээмжийг сайжруул."
     };
 
+    // ===== DIAGNOSTIC MATRIX =====
+    const DIAG_ZONES = {
+      Q1:{ name:"Дэмжигдсэн, суралцагч төвтэй онлайн сургалт",
+           desc:"Тухайн онлайн сургалт технологи, хүртээмжийн хувьд хангалттай бөгөөд суралцагчийн оролцоо, харилцаа, үнэлгээ, эргэх холбоо зохистой түвшинд байна.",
+           bg:"#eaf8f0", border:"#bbf0d0", nameColor:"#16a34a", dot:"#16a34a" },
+      Q2:{ name:"Технологи түшиглэсэн боловч багш/агуулга төвтэй онлайн сургалт",
+           desc:"Тухайн онлайн сургалт технологи, материал, хүртээмжийн хувьд боломжийн боловч суралцагчийн оролцоо, онлайн харилцаа, эргэх холбоо, суралцагч төвтэй зохион байгуулалт сул байна.",
+           bg:"#eef3ff", border:"#c7d9ff", nameColor:"#2242bb", dot:"#315efb" },
+      Q3:{ name:"Хязгаарлагдмал онлайн сургалт",
+           desc:"Тухайн онлайн сургалт технологи, хүртээмж болон суралцагч төвтэй зохион байгуулалтын аль алинд нь сайжруулалт шаардлагатай байна.",
+           bg:"#fff0f0", border:"#ffcccc", nameColor:"#c0392b", dot:"#ef4444" },
+      Q4:{ name:"Оролцоог дэмжсэн боловч технологийн дэмжлэг сул онлайн сургалт",
+           desc:"Тухайн онлайн сургалт суралцагчийн оролцоо, харилцаа, үнэлгээний хувьд боломжийн боловч технологи, хүртээмж, сургалтын хэрэглэгдэхүүн, зохион байгуулалтын дэмжлэгийг сайжруулах шаардлагатай байна.",
+           bg:"#fffbeb", border:"#fde68a", nameColor:"#92400e", dot:"#f59e0b" }
+    };
+    const DIAG_CRIT_ADVICE = {
+      C1:"Сургалтын зорилго, үр дүн болон үнэлгээний уялдааг нягтлах, CLO-г хэмжигдэхүйц болгон дахин томьёолох шаардлагатай.",
+      C2:"Агуулгын шинжлэх ухааны үндэслэл, эх сурвалжийн чанар болон материалын боловсруулалтыг сайжруулах шаардлагатай.",
+      C3:"Сургалтын дизайн, агуулгын бүтэц, логик дараалал болон танин мэдэхүйн ачааллыг тэнцвэртэй болгох шаардлагатай.",
+      C4:"Онлайн харилцаа ба оролцооны хэсэгт суралцагч хоорондын болон багш-суралцагчийн харилцааг идэвхжүүлэх шаардлагатай.",
+      C5:"Үнэлгээ ба эргэх холбооны хэсэгт явцын үнэлгээ, нээлттэй шалгуур, цаг тухайд нь эргэх холбоог сайжруулах шаардлагатай.",
+      C6:"Технологи ба хүртээмжийн хэсэгт холбоос, файл, төхөөрөмжийн нийцэл, LMS-ийн ашиглахад хялбар байдлыг сайжруулах шаардлагатай."
+    };
+    let diagChartInstance = null;
+
+    const diagQuadrantPlugin = {
+      id:"diagQuadrants",
+      beforeDraw(chart) {
+        const { ctx, chartArea:{ left, top, right, bottom }, scales:{ x, y } } = chart;
+        const mx = x.getPixelForValue(60), my = y.getPixelForValue(60);
+        ctx.save();
+        const f = (c, rx, ry, rw, rh) => { ctx.fillStyle = c; ctx.fillRect(rx, ry, rw, rh); };
+        f("rgba(22,163,74,.07)",  mx,   top,  right-mx, my-top);
+        f("rgba(49,94,251,.07)",  left, top,  mx-left,  my-top);
+        f("rgba(239,68,68,.07)",  left, my,   mx-left,  bottom-my);
+        f("rgba(245,158,11,.07)", mx,   my,   right-mx, bottom-my);
+        ctx.strokeStyle = "rgba(100,116,139,.35)";
+        ctx.lineWidth = 1.5; ctx.setLineDash([5,4]);
+        ctx.beginPath(); ctx.moveTo(mx, top);  ctx.lineTo(mx, bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(left, my); ctx.lineTo(right, my);  ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    };
+
+    function calculateXIndex(pcts) {
+      return (pcts.C1 + pcts.C4 + pcts.C5) / 3;
+    }
+    function calculateYIndex(pcts) {
+      return (pcts.C2 + pcts.C3 + pcts.C6) / 3;
+    }
+    function classifyMatrixPosition(X, Y) {
+      if (X >= 60 && Y >= 60) return "Q1";
+      if (X <  60 && Y >= 60) return "Q2";
+      if (X <  60 && Y <  60) return "Q3";
+      return "Q4";
+    }
+    function getLowestCriteria(pcts) {
+      return Object.entries(pcts).sort((a,b) => a[1]-b[1]).slice(0,2).map(([id]) => id);
+    }
+
+    function renderDiagnostic(criterionPercents) {
+      const X = calculateXIndex(criterionPercents);
+      const Y = calculateYIndex(criterionPercents);
+      document.getElementById("diagX").textContent = X.toFixed(1);
+      document.getElementById("diagY").textContent = Y.toFixed(1);
+
+      const q    = classifyMatrixPosition(X, Y);
+      const zone = DIAG_ZONES[q];
+
+      // Chart
+      const canvas = document.getElementById("diagChart");
+      if (diagChartInstance) diagChartInstance.destroy();
+      diagChartInstance = new Chart(canvas.getContext("2d"), {
+        type:"scatter", plugins:[diagQuadrantPlugin],
+        data:{ datasets:[{ data:[{x:X,y:Y}], backgroundColor:zone.dot,
+          borderColor:"#fff", borderWidth:2, pointRadius:9, pointHoverRadius:12 }] },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx =>
+            [` X=${ctx.parsed.x.toFixed(1)}  Y=${ctx.parsed.y.toFixed(1)}`, ` ${zone.name}`]
+          }}},
+          scales:{
+            x:{ min:0, max:100, grid:{color:"#f0f3f9"}, ticks:{stepSize:25, callback:v=>v+"%"} },
+            y:{ min:0, max:100, grid:{color:"#f0f3f9"}, ticks:{stepSize:25, callback:v=>v+"%"} }
+          }
+        }
+      });
+
+      // Zone
+      document.getElementById("diagZone").style.cssText =
+        `background:${zone.bg};border:1px solid ${zone.border};border-radius:12px;padding:12px 14px;margin-bottom:12px`;
+      document.getElementById("diagZone").innerHTML =
+        `<div style="font-weight:800;font-size:13px;color:${zone.nameColor};margin-bottom:5px">📍 ${zone.name}</div>
+         <div style="font-size:12px;line-height:1.75;color:#334155">${zone.desc}</div>`;
+
+      // Priority
+      const lowest = getLowestCriteria(criterionPercents);
+      document.getElementById("diagPriority").innerHTML =
+        lowest.map(id => `<div style="padding-left:12px;position:relative;margin-bottom:5px">
+          <span style="position:absolute;left:0;color:#315efb">▸</span>${DIAG_CRIT_ADVICE[id]}
+        </div>`).join("");
+
+      document.getElementById("diagCard").style.display = "block";
+    }
+
     function showStatus(msg, ok=true){
       const hero = document.getElementById("statusBoxHero");
       if (hero) {
@@ -935,9 +1059,17 @@
 
       const allFilled = rubric.flatMap(c => c.indicators).every(i => state.scores[i.id] != null);
       if (allFilled) {
+        // Criterion percentages for diagnostic
+        const cpcts = {};
+        rubric.forEach(c => {
+          cpcts[c.id.split(".")[0]] = Math.round(criterionTotal(c) / c.max * 100);
+        });
+        renderDiagnostic(cpcts);
+
         document.getElementById("overallAiCard").style.display = "block";
         if (!overallAiTextEl.value.trim()) fetchScoreAdvice();
       } else {
+        document.getElementById("diagCard").style.display = "none";
         document.getElementById("overallAiCard").style.display = "none";
         overallAiTextEl.value = "";
         overallAiTextEl.disabled = false;
