@@ -663,6 +663,26 @@
   }
 
   let diagScatterInstance = null;
+  let diagScatterPairs = [];
+
+  function findSequentialPairs(points) {
+    const map = {};
+    points.forEach((p, i) => {
+      const m = p.label.match(/^(.*?)(\d+)$/);
+      if (!m) return;
+      const key = m[1].trim();
+      if (!map[key]) map[key] = [];
+      map[key].push({ n: parseInt(m[2]), i });
+    });
+    const pairs = [];
+    Object.values(map).forEach(group => {
+      group.sort((a, b) => a.n - b.n);
+      for (let k = 0; k < group.length - 1; k++) {
+        pairs.push([group[k].i, group[k + 1].i]);
+      }
+    });
+    return pairs;
+  }
 
   const diagScatterBgPlugin = {
     id: "diagScatterBg",
@@ -690,9 +710,27 @@
       ctx.restore();
     },
     afterDraw(chart) {
-      const { ctx, scales: { x, y } } = chart;
+      const { ctx } = chart;
       const meta = chart.getDatasetMeta(0);
       ctx.save();
+
+      // Дараалсан хичээлүүдийг тасархай зураасаар холбоно
+      if (diagScatterPairs.length) {
+        ctx.strokeStyle = "rgba(100,116,139,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        diagScatterPairs.forEach(([i, j]) => {
+          const p1 = meta.data[i], p2 = meta.data[j];
+          if (!p1 || !p2) return;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+      }
+
+      // Хичээлийн нэр
       ctx.font = "600 11px Inter,system-ui,sans-serif";
       ctx.textAlign = "center";
       meta.data.forEach((pt, i) => {
@@ -732,6 +770,7 @@
       return { x: X, y: Y, label: g.courseCode, percent: g.percent, q: diagQuadrant(X, Y) };
     });
 
+    diagScatterPairs = findSequentialPairs(points);
     if (diagScatterInstance) diagScatterInstance.destroy();
     diagScatterInstance = new Chart(document.getElementById("diagScatterChart"), {
       type: "scatter",
