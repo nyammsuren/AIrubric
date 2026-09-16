@@ -52,6 +52,23 @@ const DEFAULT_RUBRIC_MAP = {
   "C6.4": "Хүртээмж"
 };
 
+// "Сургалтын бэлтгэл" (нийт дээд оноо: 48)
+const DESIGN_IDS = [
+  "C1.1","C1.2","C1.3","C1.4",
+  "C2.1","C2.2","C2.3","C2.4",
+  "C3.1","C3.2","C3.3","C3.4",
+  "C5.2",
+  "C6.1","C6.3","C6.4"
+];
+// "Сургалтын хэрэгжилт" (нийт дээд оноо: 24)
+const IMPLEMENTATION_IDS = [
+  "C4.1","C4.2","C4.3","C4.4",
+  "C5.1","C5.3","C5.4",
+  "C6.2"
+];
+const DESIGN_MAX = 48;
+const IMPLEMENTATION_MAX = 24;
+
 function buildRubricMap(clientRubric) {
   if (!Array.isArray(clientRubric) || clientRubric.length === 0) return DEFAULT_RUBRIC_MAP;
   const map = {};
@@ -293,6 +310,11 @@ app.post("/api/score-advice", async (req, res) => {
     const totalScore = Object.values(scores).reduce((s, v) => s + Number(v || 0), 0);
     const percent = Math.round((totalScore / 72) * 100);
 
+    const designScore = DESIGN_IDS.reduce((s, id) => s + Number(scores[id] || 0), 0);
+    const implementationScore = IMPLEMENTATION_IDS.reduce((s, id) => s + Number(scores[id] || 0), 0);
+    const designPercent = Math.round((designScore / DESIGN_MAX) * 100);
+    const implementationPercent = Math.round((implementationScore / IMPLEMENTATION_MAX) * 100);
+
     const lines = Object.entries(rubricMap)
       .map(([id, title]) => `${id} (${title}): ${scores[id] ?? 0}/3`)
       .join("\n");
@@ -300,6 +322,8 @@ app.post("/api/score-advice", async (req, res) => {
     const prompt = `Та онлайн хичээлийн чанарын мэргэжлийн үнэлгээч. Доорх үнэлгээний дүнг үндэслэн монголоор нэгдсэн дүгнэлт, зөвлөмж бич.
 
 Нийт оноо: ${totalScore}/72 (${percent}%)
+Сургалтын бэлтгэл (C1, C2, C3, C5.2, C6.1, C6.3, C6.4): ${designScore}/${DESIGN_MAX} (${designPercent}%)
+Сургалтын хэрэгжилт (C4, C5.1, C5.3, C5.4, C6.2): ${implementationScore}/${IMPLEMENTATION_MAX} (${implementationPercent}%)
 
 Үзүүлэлт бүрийн оноо (0=нотолгоо байхгүй, 1=хангалтгүй, 2=хангалттай, 3=маш сайн):
 ${lines}
@@ -309,10 +333,13 @@ ${lines}
 1. НИЙТ ДҮГНЭЛТ
 Нийт оноо болон хичээлийн ерөнхий чанарын талаар 2 өгүүлбэр.
 
-2. АНХААРАЛ ШААРДЛАГАТАЙ ҮЗҮҮЛЭЛТҮҮД
+2. СУРГАЛТЫН БЭЛТГЭЛ БА ХЭРЭГЖИЛТ
+Дээрх хоёр дэд нийлбэрийг харьцуулж, аль тал (бэлтгэл үү, хэрэгжилт үү) илүү сул байгааг тодорхойлж, тухайн тал руу чиглэсэн 2-3 өгүүлбэрийн зөвлөмж өг.
+
+3. АНХААРАЛ ШААРДЛАГАТАЙ ҮЗҮҮЛЭЛТҮҮД
 0 эсвэл 1 оноо авсан үзүүлэлт бүрт яг тухайн үзүүлэлтэд чиглэсэн тодорхой, хийж болохуйц 1-2 өгүүлбэрийн зөвлөмж өг.
 
-3. ДАРААГИЙН АЛХАМ
+4. ДАРААГИЙН АЛХАМ
 Хичээлийг сайжруулахын тулд эхний ээлжид хийх 3 конкрет ажлыг нэрлэ.`;
 
     const response = await openai.chat.completions.create({
