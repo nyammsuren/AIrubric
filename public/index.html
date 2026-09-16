@@ -492,8 +492,6 @@
           const data = await res.json();
           if (data.ok) {
             const mode = new URLSearchParams(window.location.search).get("mode");
-            document.querySelector(".hero-actions").style.display = "block";
-            document.getElementById("dashboardLink").style.display = "block";
             // overallAiCard always visible
 
             document.getElementById("resetBtn").style.display = "block";

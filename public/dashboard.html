@@ -161,6 +161,19 @@
     </div>
   </div>
 
+  <div class="stats" style="grid-template-columns:repeat(2,1fr);margin-bottom:24px">
+    <div class="stat-card">
+      <div class="label">Дизайны шалгуур</div>
+      <div class="value" id="statDesign">—</div>
+      <div class="sub" id="statDesignSub">48-аас</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Хэрэгжилтийн шалгуур</div>
+      <div class="value" id="statImpl">—</div>
+      <div class="sub" id="statImplSub">24-өөс</div>
+    </div>
+  </div>
+
   <div class="charts-grid" id="chartsSection" style="display:none">
     <div class="chart-card">
       <h3>📊 Шалгуур тусбүрийн дундаж оноо</h3>
@@ -279,9 +292,14 @@
       const advice = rows.map(r => r.overallAiAdvice || "")
         .filter(a => a.length > 10).sort((a, b) => b.length - a.length)[0] || "";
 
+      const subScores = rows.map(r => computeSubScores(r.scores));
+      const designScore = Math.round(subScores.reduce((s, v) => s + v.design, 0) / n * 10) / 10;
+      const implementationScore = Math.round(subScores.reduce((s, v) => s + v.implementation, 0) / n * 10) / 10;
+
       return { id: courseCode, courseCode, count: n, totalScore: avgTotal,
                maxScore, percent: avgPercent, evalDate, evaluators,
-               criterionTotals, overallAiAdvice: advice, rows };
+               criterionTotals, overallAiAdvice: advice, rows,
+               designScore, implementationScore };
     }).sort((a, b) => b.percent - a.percent);
   }
 
@@ -341,12 +359,25 @@
       document.getElementById("statAvg").textContent = "—";
       document.getElementById("statTop").textContent = "—";
       document.getElementById("statLow").textContent = "—";
+      document.getElementById("statDesign").textContent = "—";
+      document.getElementById("statDesignSub").textContent = "—";
+      document.getElementById("statImpl").textContent = "—";
+      document.getElementById("statImplSub").textContent = "—";
       return;
     }
     const avg = Math.round(groups.reduce((s, e) => s + e.percent, 0) / groups.length);
     document.getElementById("statAvg").textContent = avg + "%";
     document.getElementById("statTop").textContent = groups.filter(e => e.percent >= 90).length;
     document.getElementById("statLow").textContent = groups.filter(e => e.percent < 60).length;
+
+    const avgDesign = groups.reduce((s, e) => s + (e.designScore || 0), 0) / groups.length;
+    const avgImpl   = groups.reduce((s, e) => s + (e.implementationScore || 0), 0) / groups.length;
+    const designPercent = Math.round((avgDesign / DESIGN_MAX) * 100);
+    const implPercent   = Math.round((avgImpl / IMPLEMENTATION_MAX) * 100);
+    document.getElementById("statDesign").textContent = `${Math.round(avgDesign * 10) / 10}/${DESIGN_MAX}`;
+    document.getElementById("statDesignSub").textContent = `${designPercent}%`;
+    document.getElementById("statImpl").textContent = `${Math.round(avgImpl * 10) / 10}/${IMPLEMENTATION_MAX}`;
+    document.getElementById("statImplSub").textContent = `${implPercent}%`;
   }
 
   function renderTable(groups) {
@@ -464,6 +495,36 @@
   // C1–C6 товч нэр → CRITERION_SHEET_KEYS хоорондын map
   const CRITERION_SHORT = ["C1","C2","C3","C4","C5","C6"];
 
+  const ALL_INDICATOR_IDS = [
+    "C1.1","C1.2","C1.3","C1.4","C2.1","C2.2","C2.3","C2.4",
+    "C3.1","C3.2","C3.3","C3.4","C4.1","C4.2","C4.3","C4.4",
+    "C5.1","C5.2","C5.3","C5.4","C6.1","C6.2","C6.3","C6.4"
+  ];
+
+  // "Дизайны шалгуур" (нийт дээд оноо: 48)
+  const DESIGN_IDS = [
+    "C1.1","C1.2","C1.3","C1.4",
+    "C2.1","C2.2","C2.3","C2.4",
+    "C3.1","C3.2","C3.3","C3.4",
+    "C5.2",
+    "C6.1","C6.3","C6.4"
+  ];
+  // "Хэрэгжилтийн шалгуур" (нийт дээд оноо: 24)
+  const IMPLEMENTATION_IDS = [
+    "C4.1","C4.2","C4.3","C4.4",
+    "C5.1","C5.3","C5.4",
+    "C6.2"
+  ];
+  const DESIGN_MAX = 48;
+  const IMPLEMENTATION_MAX = 24;
+
+  function computeSubScores(scores) {
+    const s = scores || {};
+    const design = DESIGN_IDS.reduce((sum, id) => sum + Number(s[id] || 0), 0);
+    const implementation = IMPLEMENTATION_IDS.reduce((sum, id) => sum + Number(s[id] || 0), 0);
+    return { design, implementation };
+  }
+
   function sheetRowToEval(row, idx) {
     const criterionTotals = {};
     CRITERION_SHEET_KEYS.forEach((k, i) => {
@@ -494,11 +555,20 @@
     }
 
     const relevance = {};
-    for (const id of ["C1.1","C1.2","C1.3","C1.4","C2.1","C2.2","C2.3","C2.4",
-                      "C3.1","C3.2","C3.3","C3.4","C4.1","C4.2","C4.3","C4.4",
-                      "C5.1","C5.2","C5.3","C5.4","C6.1","C6.2","C6.3","C6.4"]) {
+    for (const id of ALL_INDICATOR_IDS) {
       const k = "rel_" + id.replace(".", "_");
       if (row[k] !== undefined && row[k] !== "") relevance[k] = Number(row[k]);
+    }
+
+    // Үзүүлэлт тус бүрийн оноо (C1.1 – C6.4), Дизайн/Хэрэгжилтийн дэд нийлбэрт зориулав
+    const scores = {};
+    for (const id of ALL_INDICATOR_IDS) {
+      if (row[id] !== undefined && row[id] !== "") scores[id] = Number(row[id]);
+    }
+    if (Object.keys(scores).length === 0 && row.scores) {
+      let sc = row.scores;
+      if (typeof sc === "string") { try { sc = JSON.parse(sc); } catch { sc = {}; } }
+      if (sc && typeof sc === "object") Object.assign(scores, sc);
     }
 
     return {
@@ -514,7 +584,8 @@
       overallAiAdvice: String(row.overallAiAdvice || ""),
       evidenceSummary: Array.isArray(evidenceSummary) ? evidenceSummary : [],
       criterionTotals,
-      relevance
+      relevance,
+      scores
     };
   }
 
