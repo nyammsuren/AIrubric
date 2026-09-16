@@ -1,0 +1,1243 @@
+﻿<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Онлайн сургалтыг үнэлэх НН шалгуур</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#f6f8fc;
+      --card:#ffffff;
+      --line:#e6ebf3;
+      --text:#172033;
+      --muted:#64748b;
+      --primary:#315efb;
+      --primary-soft:#eef3ff;
+      --green:#16a34a;
+      --amber:#f59e0b;
+      --red:#ef4444;
+      --shadow:0 10px 28px rgba(15, 23, 42, .08);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,#f8fbff 0%, #f5f7fb 100%);
+      color:var(--text)
+    }
+    .wrap{max-width:1480px;margin:0 auto;padding:24px}
+    .hero{
+      background:linear-gradient(135deg,#2242bb 0%, #4d7cff 100%);
+      color:#fff;border-radius:24px;padding:28px;box-shadow:var(--shadow);margin-bottom:24px;
+      position:relative;
+    }
+    .hero h1{margin:0 0 8px;font-size:34px;line-height:1.1}
+    .hero p{margin:6px 0;color:rgba(255,255,255,.92)}
+    .meta{
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+      gap:12px;margin-top:18px;align-items:stretch;
+    }
+    .field{
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.18);
+      border-radius:14px;padding:14px 16px
+    }
+    .field label{
+      display:block;font-size:13px;margin-bottom:6px;color:rgba(255,255,255,.85)
+    }
+    .field input,.field textarea{
+      width:100%;border:none;outline:none;background:transparent;color:#fff;font-size:15px;font-weight:500
+    }
+    .field input::placeholder,.field textarea::placeholder{color:rgba(255,255,255,.6)}
+    .field select option{color:#172033;background:#fff;}
+    .btn{
+      border:none;cursor:pointer;border-radius:14px;padding:12px 16px;
+      font-weight:800;transition:.2s ease;white-space:nowrap
+    }
+    .btn-primary{background:#fff;color:#2242bb}
+    .btn-success{background:#0f9d58;color:#fff}
+    .btn-edit{background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:13px;padding:8px 14px;}
+    .btn:hover{transform:translateY(-1px)}
+    .hero-actions{position:absolute;top:24px;right:24px;}
+
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 420px;
+      gap:24px;align-items:start
+    }
+    .criteria{display:flex;flex-direction:column;gap:18px}
+    .card{
+      background:var(--card);border:1px solid var(--line);
+      border-radius:24px;box-shadow:var(--shadow);overflow:hidden
+    }
+    .criterion-head{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+      padding:18px 20px;background:#fbfcff;border-bottom:1px solid var(--line)
+    }
+    .criterion-title{font-size:22px;font-weight:800;margin:0}
+    .score-pill{
+      background:var(--primary-soft);color:var(--primary);
+      border:1px solid #d8e2ff;padding:10px 14px;border-radius:999px;
+      font-weight:800;white-space:nowrap
+    }
+    .indicator{padding:18px 20px;border-top:1px solid var(--line)}
+    .indicator:first-child{border-top:none}
+    .indicator-top{display:flex;justify-content:space-between;gap:16px;margin-bottom:12px}
+    .indicator-code{
+      font-size:12px;font-weight:700;color:var(--primary);background:var(--primary-soft);
+      border:1px solid #dbe5ff;padding:4px 8px;border-radius:999px;display:inline-block;margin-bottom:8px
+    }
+    .indicator-title{font-size:18px;font-weight:700;margin:0}
+    .indicator-value{color:var(--muted);font-size:14px;white-space:nowrap}
+    .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+    .level{
+      border:1px solid var(--line);border-radius:18px;padding:14px;cursor:pointer;
+      transition:.18s ease;background:#fff;min-height:118px
+    }
+    .level:hover{
+      border-color:#b8c8ff;box-shadow:0 6px 18px rgba(49,94,251,.08);transform:translateY(-1px)
+    }
+    .level.active{
+      border-color:var(--primary);
+      background:linear-gradient(180deg,#f4f7ff 0%, #eef3ff 100%);
+      box-shadow:0 10px 24px rgba(49,94,251,.12)
+    }
+    .level-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+    .level-tag{
+      font-size:12px;font-weight:800;color:#3c4b68;background:#f1f4fb;
+      padding:4px 8px;border-radius:999px
+    }
+    .level.active .level-tag{background:#dfe8ff;color:#2341b8}
+    .level-score{font-size:12px;font-weight:800;color:#2341b8}
+    .level-text{font-size:14px;line-height:1.55;color:#334155}
+
+    .side{position:sticky;top:20px;display:flex;flex-direction:column;gap:16px}
+    .summary{padding:20px}
+    .summary-top{display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+    .summary h3{margin:0 0 10px;font-size:20px}
+    .big-score{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .stat{
+      background:#f8faff;border:1px solid var(--line);border-radius:18px;
+      padding:14px;text-align:center
+    }
+    .stat .label{font-size:12px;color:var(--muted);margin-bottom:6px}
+    .stat .value{font-size:28px;font-weight:900}
+    .quality{
+      border-radius:18px;padding:14px;font-weight:800;text-align:center;
+      margin-bottom:14px;border:1px solid var(--line);background:#f9fafb
+    }
+    .bars{display:flex;flex-direction:column;gap:12px}
+    .bar-wrap{background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px 12px}
+    .bar-top{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:13px}
+    .bar{height:9px;border-radius:999px;background:#edf1f7;overflow:hidden}
+    .bar > div{
+      height:100%;background:linear-gradient(90deg,#315efb 0%, #6a8cff 100%);
+      width:0%;transition:width .25s ease
+    }
+    .legend{
+      margin-top:14px;border-top:1px dashed var(--line);padding-top:14px;
+      color:var(--muted);font-size:13px;line-height:1.6
+    }
+
+    .overall-ai{padding:18px 20px}
+    .overall-ai ul{margin:8px 0 0 18px;padding:0}
+    .overall-ai li{margin:6px 0;line-height:1.55}
+
+    .status{
+      font-size:13px;padding:10px 12px;border-radius:12px;border:1px solid var(--line);
+      background:#fff;display:none
+    }
+    .status.show{display:block}
+    .status.ok{color:#0f9d58;background:#eefcf4;border-color:#c9efd7}
+    .status.err{color:#b42318;background:#fff4f2;border-color:#f6d0ca}
+
+    .radar-mini{height:180px;position:relative;}
+    .radar-mini canvas{position:absolute;inset:0;}
+
+    /* ===== COURSE DROPDOWN ===== */
+    .course-picker{position:relative;}
+    .course-picker input{
+      width:100%;border:none;outline:none;background:transparent;color:#fff;font-size:14px;
+    }
+    .course-picker input::placeholder{color:rgba(255,255,255,.6);}
+    .course-dropdown{
+      display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;
+      background:#fff;border:1px solid #dbe5ff;border-radius:14px;
+      box-shadow:0 8px 24px rgba(15,23,42,.14);z-index:500;
+      max-height:220px;overflow-y:auto;
+    }
+    .course-dropdown.open{display:block;}
+    .course-option{
+      padding:10px 14px;cursor:pointer;font-size:14px;color:#172033;
+      border-bottom:1px solid #f0f4ff;line-height:1.4;
+    }
+    .course-option:last-child{border-bottom:none;}
+    .course-option:hover{background:#f4f7ff;}
+    .course-option .course-code{font-size:12px;color:#64748b;margin-top:2px;}
+    .course-option.loading,.course-option.empty{color:#64748b;cursor:default;}
+    .course-option.loading:hover,.course-option.empty:hover{background:none;}
+
+    .evidence-card{padding:18px 20px;}
+    .evidence-item{
+      border:1px solid #e6ebf3;border-radius:12px;padding:10px 12px;
+      margin-bottom:8px;background:#f8fbff;font-size:14px;line-height:1.6;color:#334155;
+    }
+
+    /* ===== RUBRIC EDITOR MODAL ===== */
+    .modal-overlay{
+      display:none;position:fixed;inset:0;background:rgba(10,20,50,.55);
+      z-index:1000;align-items:flex-start;justify-content:center;padding:24px;
+      overflow-y:auto;
+    }
+    .modal-overlay.open{display:flex;}
+    .modal{
+      background:#fff;border-radius:24px;width:100%;max-width:860px;
+      box-shadow:0 24px 64px rgba(10,20,50,.22);margin:auto;
+    }
+    .modal-head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:20px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;
+      background:#fff;border-radius:24px 24px 0 0;z-index:2;
+    }
+    .modal-head h2{margin:0;font-size:20px;}
+    .modal-close{
+      background:none;border:none;cursor:pointer;font-size:22px;color:var(--muted);
+      line-height:1;padding:4px 8px;border-radius:8px;
+    }
+    .modal-close:hover{background:#f1f4fb;}
+    .modal-body{padding:20px 24px;display:flex;flex-direction:column;gap:24px;}
+    .modal-foot{
+      padding:16px 24px;border-top:1px solid var(--line);display:flex;
+      justify-content:flex-end;gap:12px;position:sticky;bottom:0;
+      background:#fff;border-radius:0 0 24px 24px;
+    }
+    .btn-cancel{background:#f1f4fb;color:#334155;border:1px solid var(--line);}
+
+    /* SURVEY */
+    .survey-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,50,.7);
+      z-index:2000;align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto;}
+    .survey-overlay.open{display:flex;}
+    .survey-modal{background:#fff;border-radius:24px;width:100%;max-width:680px;
+      box-shadow:0 24px 64px rgba(10,20,50,.25);margin:auto;}
+    .survey-head{padding:22px 28px;border-bottom:1px solid var(--line);border-radius:24px 24px 0 0;background:linear-gradient(135deg,#2242bb,#4d7cff);color:#fff;}
+    .survey-head h2{margin:0 0 6px;font-size:20px;}
+    .survey-head p{margin:0;font-size:13px;opacity:.9;}
+    .survey-body{padding:24px 28px;display:flex;flex-direction:column;gap:22px;}
+    .survey-q{display:flex;flex-direction:column;gap:8px;}
+    .survey-q label{font-size:14px;font-weight:700;color:var(--text);}
+    .survey-q textarea{border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+      font-size:14px;font-family:inherit;resize:vertical;min-height:80px;outline:none;}
+    .survey-q textarea:focus{border-color:var(--primary);}
+    .exp-options{display:flex;flex-wrap:wrap;gap:10px;}
+    .exp-opt{display:flex;align-items:center;gap:6px;background:#f8faff;
+      border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:14px;}
+    .exp-opt input{accent-color:var(--primary);}
+    .likert-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .likert-table th{padding:8px 6px;text-align:center;color:var(--muted);font-weight:600;
+      background:#f8faff;border-bottom:1px solid var(--line);}
+    .likert-table th:first-child{text-align:left;width:50%;}
+    .likert-table td{padding:10px 6px;text-align:center;border-bottom:1px solid var(--line);}
+    .likert-table td:first-child{text-align:left;font-size:13px;padding-left:0;}
+    .likert-table tr:last-child td{border-bottom:none;}
+    .likert-table input[type=radio]{accent-color:var(--primary);width:16px;height:16px;cursor:pointer;}
+    .survey-foot{padding:16px 28px;border-top:1px solid var(--line);border-radius:0 0 24px 24px;
+      background:#fff;display:flex;justify-content:flex-end;}
+    .survey-foot .btn-primary{background:var(--primary);color:#fff;font-size:15px;padding:12px 28px;}
+
+    .editor-criterion{
+      border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    }
+    .editor-criterion-head{
+      background:#f4f7ff;padding:12px 16px;display:flex;align-items:center;gap:10px;
+      border-bottom:1px solid var(--line);
+    }
+    .editor-criterion-head span{
+      font-size:12px;font-weight:800;color:var(--primary);background:var(--primary-soft);
+      border:1px solid #dbe5ff;padding:3px 8px;border-radius:999px;
+    }
+    .editor-cname{
+      flex:1;border:1px solid #d0d8f0;border-radius:10px;padding:7px 10px;
+      font-size:14px;font-weight:700;color:var(--text);outline:none;
+    }
+    .editor-cname:focus{border-color:var(--primary);}
+    .editor-indicators{display:flex;flex-direction:column;gap:0;}
+    .editor-indicator{
+      padding:14px 16px;border-top:1px solid var(--line);
+    }
+    .editor-iname-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+    .editor-icode{
+      font-size:11px;font-weight:800;color:var(--primary);background:var(--primary-soft);
+      border:1px solid #dbe5ff;padding:3px 7px;border-radius:999px;white-space:nowrap;
+    }
+    .editor-iname{
+      flex:1;border:1px solid #d0d8f0;border-radius:10px;padding:6px 10px;
+      font-size:14px;font-weight:600;color:var(--text);outline:none;
+    }
+    .editor-iname:focus{border-color:var(--primary);}
+    .editor-levels{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .editor-level{border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
+    .editor-level-head{
+      font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px;
+    }
+    .editor-level textarea{
+      width:100%;border:1px solid #d0d8f0;border-radius:8px;padding:6px 8px;
+      font-size:13px;line-height:1.5;color:var(--text);outline:none;
+      resize:vertical;min-height:60px;font-family:inherit;
+    }
+    .editor-level textarea:focus{border-color:var(--primary);}
+
+    @media (max-width: 1280px){
+      .layout{grid-template-columns:1fr}
+      .side{position:static}
+    }
+    @media (max-width: 900px){
+      .meta{grid-template-columns:1fr 1fr}
+      .editor-levels{grid-template-columns:1fr}
+    }
+    @media (max-width: 700px){
+      .wrap{padding:14px}
+      .hero{padding:18px}
+      .hero h1{font-size:28px}
+      .levels{grid-template-columns:1fr 1fr}
+      .meta{grid-template-columns:1fr}
+      .criterion-head{flex-direction:column;align-items:flex-start}
+      .big-score{grid-template-columns:1fr}
+      .hero-actions{position:static;margin-top:14px;}
+      .modal{border-radius:16px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-actions" style="display:none;">
+        <div id="editorTools" style="display:none;gap:8px;align-items:center;">
+          <button class="btn btn-edit" id="openEditorBtn">✏️ Рубрик засах</button>
+        </div>
+        <button class="btn btn-edit" id="toggleToolsBtn" style="font-size:18px;padding:8px 12px;">⚙️</button>
+      </div>
+      <div id="dashboardLink" style="position:absolute;top:24px;left:24px;display:none;">
+        <a href="/dashboard.html" style="color:rgba(255,255,255,.85);font-size:13px;text-decoration:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);padding:6px 12px;border-radius:10px;">📊 Дашбоард</a>
+      </div>
+      <h1>Онлайн сургалтыг үнэлэх НН шалгуур</h1>
+      <p>Онлайн сургалтыг үнэлэх интерактив үнэлгээний хэрэгсэл</p>
+      <p>Нийт дээд оноо: <strong>72</strong> | Шалгуур тус бүрийн дээд оноо: <strong>12</strong></p>
+
+      <div class="meta">
+        <div class="field">
+          <label>Огноо</label>
+          <input id="evalDate" type="date" readonly />
+        </div>
+        <div class="field">
+          <label>Хичээлийн нэр</label>
+          <input id="courseCode" placeholder="Жишээ: Компьютерийн сүлжээ" />
+        </div>
+        <div class="field">
+          <label>Сургуулийн нэр</label>
+          <input id="schoolName" placeholder="Жишээ: МУИС" />
+        </div>
+        <div class="field">
+          <label>Үнэлгээ хийх багшийн код</label>
+          <input id="evaluator" placeholder="Жишээ: Эксперт 1" />
+        </div>
+        <div id="statusBoxHero" class="status" style="font-size:12px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;display:none;"></div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div style="display:flex;flex-direction:column;gap:18px;">
+      <div class="criteria" id="criteria"></div>
+      </div>
+
+      <aside class="side">
+        <div class="card summary">
+          <div class="summary-top">
+            <div>
+              <h3>Нэгтгэл</h3>
+              <div class="big-score">
+                <div class="stat">
+                  <div class="label">нийт ОНОО</div>
+                  <div class="value" id="totalScore">0</div>
+                </div>
+                <div class="stat">
+                  <div class="label">ХУВЬ</div>
+                  <div class="value" id="totalPercent">0%</div>
+                </div>
+              </div>
+              <div class="big-score">
+                <div class="stat">
+                  <div class="label">Сургалтын бэлтгэл</div>
+                  <div class="value" id="designScore" style="font-size:20px">0/48</div>
+                </div>
+                <div class="stat">
+                  <div class="label">Сургалтын хэрэгжилт</div>
+                  <div class="value" id="implementationScore" style="font-size:20px">0/24</div>
+                </div>
+              </div>
+              <div class="quality" id="qualityLabel">Сайжруулах шаардлагатай</div>
+            </div>
+            <div class="radar-mini" style="height:200px;">
+              <canvas id="radarChart"></canvas>
+            </div>
+          </div>
+          <div class="bars" id="bars"></div>
+          <div class="legend">
+            <div><strong>Тайлбар</strong></div>
+            <div>90–100% → Жишиг хичээл</div>
+            <div>75–89% → Бага зэргийн засвар хэрэгтэй</div>
+            <div>60–74% → Дунд зэргийн засвар хийх шаардлагатай</div>
+            <div>&lt;60% → Сайжруулах шаардлагатай</div>
+          </div>
+        </div>
+
+        <div class="card" id="diagCard" style="padding:18px 20px;">
+          <div style="font-weight:700;font-size:14px;margin-bottom:14px">📊 Оношилгооны матриц</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <div style="background:#f8faff;border:1px solid #e6ebf3;border-radius:12px;padding:10px;text-align:center">
+              <div style="font-size:22px;font-weight:900;color:#315efb" id="diagX">—</div>
+              <div style="font-size:11px;color:#64748b;margin-top:3px">X индекс<br><span style="opacity:.7">(C1+C4+C5)/3</span></div>
+            </div>
+            <div style="background:#f8faff;border:1px solid #e6ebf3;border-radius:12px;padding:10px;text-align:center">
+              <div style="font-size:22px;font-weight:900;color:#315efb" id="diagY">—</div>
+              <div style="font-size:11px;color:#64748b;margin-top:3px">Y индекс<br><span style="opacity:.7">(C2+C3+C6)/3</span></div>
+            </div>
+          </div>
+          <div style="position:relative;height:260px;margin-bottom:10px">
+            <canvas id="diagChart"></canvas>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:14px;line-height:1.8">
+            X: Багш/агуулга төвтэй ← 60 → Суралцагч төвтэй<br>
+            Y: Технологийн дэмжлэг сул ← 60 → Технологийн дэмжлэг өндөр
+          </div>
+          <div id="diagZone" style="border-radius:12px;padding:12px 14px;margin-bottom:12px"></div>
+        </div>
+
+        <div class="card overall-ai" id="overallAiCard">
+          <h3 style="margin:0 0 10px;font-size:22px;">AI нэгдсэн зөвлөмж</h3>
+          <textarea id="overallAiText"
+            style="width:100%;min-height:300px;border:1px solid #e6ebf3;border-radius:16px;
+            padding:14px;font-size:14px;line-height:1.7;resize:vertical;"></textarea>
+          <div id="evidenceSummaryBox" style="display:none;margin-top:14px;"></div>
+        </div>
+
+        <div class="card" id="submitCard" style="padding:18px 20px;">
+          <button class="btn btn-success" id="submitBtnBottom" style="font-size:15px;padding:13px 24px;border-radius:14px;width:100%;">Үнэлгээ илгээх</button>
+          <button id="resetBtn" style="display:none;margin-top:10px;width:100%;font-size:14px;padding:10px 24px;border-radius:14px;border:1px solid #e6ebf3;background:#f8faff;color:#64748b;cursor:pointer;font-weight:600;">↺ Дахин эхлэх</button>
+          <div id="statusBoxBottom" class="status"></div>
+        </div>
+
+      </aside>
+    </section>
+
+
+  </div>
+
+  <!-- RUBRIC EDITOR MODAL -->
+  <div class="modal-overlay" id="editorOverlay">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>✏️ Рубрик засварлах</h2>
+        <button class="modal-close" id="closeEditorBtn">✕</button>
+      </div>
+      <div class="modal-body" id="editorBody"></div>
+      <div class="modal-foot">
+        <button class="btn btn-cancel" id="cancelEditorBtn">Цуцлах</button>
+        <button class="btn btn-success" id="saveEditorBtn">Хадгалах</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+      const today = new Date().toISOString().split("T")[0];
+      document.getElementById("evalDate").value = today;
+
+      // sessionStorage-аас adminToken авч шалгах
+      const adminToken = sessionStorage.getItem("adminToken") || localStorage.getItem("adminToken") || "";
+      if (adminToken) {
+        try {
+          const res = await fetch("/api/admin/verify", {
+            headers: { "Authorization": `Bearer ${adminToken}` }
+          });
+          const data = await res.json();
+          if (data.ok) {
+            const mode = new URLSearchParams(window.location.search).get("mode");
+            // overallAiCard always visible
+
+            document.getElementById("resetBtn").style.display = "block";
+
+            if (mode === "rubric") {
+              setTimeout(() => openEditor(), 300);
+            }
+          }
+        } catch {}
+      }
+    });
+
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycldPQYZbM5XMzklqLuHGl-fXdwOC0cOZmretZCHchG7UBZrxgNgUOpyUl_KKfTQBC/exec";
+
+    let rubric = [
+      {
+        id: "C1.Шалгуур 1",
+        title: "Сургалтын зорилго, үр дүн, үнэлгээний уялдаа",
+        max: 12,
+        indicators: [
+          { id: "C1.1", title: "CLO-ийн тодорхой байдал", levels: [
+            { score: 0, label: "1", text: "CLO тодорхой бус, хэмжигдэхүйц үйл үг ашиглаагүй" },
+            { score: 1, label: "2", text: "CLO тодорхой боловч хэмжигдэхүйц байдал сул" },
+            { score: 2, label: "3", text: "CLO хэмжигдэхүйц, Блумийн түвшин тодорхой" },
+            { score: 3, label: "4", text: "CLO шаталсан, гүйцэтгэлийн түвшинг илэрхийлсэн, бодит чадварт чиглэсэн" }
+          ]},
+          { id: "C1.2", title: "CLO ба агуулгын нийцэл", levels: [
+            { score: 0, label: "1", text: "Агуулга болон CLO-ийн логик холбоо сул" },
+            { score: 1, label: "2", text: "Зарим агуулга CLO-д нийцсэн боловч дутуу хэсэг байна" },
+            { score: 2, label: "3", text: "Агуулга CLO-г системтэй дэмжсэн" },
+            { score: 3, label: "4", text: "Агуулга шаталсан, CLO бүрийг нотолгоонд суурилан хөгжүүлсэн" }
+          ]},
+          { id: "C1.3", title: "CLO ба сургалтын үйл ажиллагаа", levels: [
+            { score: 0, label: "1", text: "Даалгавар CLO-г хэмжихгүй" },
+            { score: 1, label: "2", text: "Зарим үйл ажиллагаа нь CLO-той холбоотой боловч логик сул" },
+            { score: 2, label: "3", text: "Сургалтын үйл ажиллагаа нь CLO-г бодитоор хэрэгжүүлсэн" },
+            { score: 3, label: "4", text: "Сургалтын үйл ажиллагаа нь шаталсан, ахисан түвшний чадвар хөгжүүлэхээр зохион байгуулагдсан" }
+          ]},
+          { id: "C1.4", title: "CLO ба үнэлгээний нийцэл", levels: [
+            { score: 0, label: "1", text: "Үнэлгээний даалгавар CLO-г хэмжих боломжгүй" },
+            { score: 1, label: "2", text: "Үнэлгээний зарим даалгавар CLO-г хэмжсэн боловч бүрэн бус" },
+            { score: 2, label: "3", text: "Үнэлгээний даалгавар CLO бүрийг хэмжсэн" },
+            { score: 3, label: "4", text: "Үнэлгээний даалгавар бүр CLO-ийн үйл үг, Блумийн түвшинд таарсан" }
+          ]}
+        ]
+      },
+      {
+        id: "C2.Шалгуур 2",
+        title: "Агуулгын чанар, эх сурвалж",
+        max: 12,
+        indicators: [
+          { id: "C2.1", title: "Шинжлэх ухааны үндэслэл", levels: [
+            { score: 0, label: "1", text: "Онолын суурь сул, тайлбар ерөнхий" },
+            { score: 1, label: "2", text: "Үндсэн ойлголтыг тайлбарласан боловч судалгааны нотолгоо хангалтгүй" },
+            { score: 2, label: "3", text: "Онол, судалгаанд тулгуурласан, жишээ болон баримтаар бататгасан" },
+            { score: 3, label: "4", text: "Олон эх сурвалжийг харьцуулан уялдуулж, шүүмжлэлтэй задлан шинжилсэн" }
+          ]},
+          { id: "C2.2", title: "Эх сурвалж", levels: [
+            { score: 0, label: "1", text: "Эх сурвалж байхгүй, сүүлийн 6 жил шинэчлэгдээгүй, найдвартай бус" },
+            { score: 1, label: "2", text: "Эх сурвалж ашигласан боловч шинэчлэлт, төрөлжилт хангалтгүй" },
+            { score: 2, label: "3", text: "Сүүлийн үеийн найдвартай эх сурвалж ашигласан ч оюутанд нээлттэй биш" },
+            { score: 3, label: "4", text: "Олон төрөлт эх сурвалжийг системтэй ашигласан, оюутанд нээлттэй, бие даан суралцах боломж бүрдүүлсэн" }
+          ]},
+          { id: "C2.3", title: "Материалын боловсруулалт", levels: [
+            { score: 0, label: "1", text: "Өнгөц ойлголт давамгай" },
+            { score: 1, label: "2", text: "Үндсэн агуулгыг тайлбарласан" },
+            { score: 2, label: "3", text: "Агуулга задлан шинжилсэн, харьцуулсан" },
+            { score: 3, label: "4", text: "Онол, хэрэглээ, судалгааны үр дүнг уялдуулсан, интеграцчилсан байдлаар боловсруулсан" }
+          ]},
+          { id: "C2.4", title: "Бодит хэрэглээ", levels: [
+            { score: 0, label: "1", text: "Мэдээлэл дамжуулах хэлбэр давамгай" },
+            { score: 1, label: "2", text: "Зарим нэг бодит хэрэглээний жишээ орсон" },
+            { score: 2, label: "3", text: "Асуудалд суурилсан, кэйс, жишээ агуулсан" },
+            { score: 3, label: "4", text: "Бодит нөхцөл байдал, мэргэжлийн хэрэглээтэй системтэй холбосон" }
+          ]}
+        ]
+      },
+      {
+        id: "C3.Шалгуур 3",
+        title: "Сургалтын дизайн ба хэрэглэгдэхүүн",
+        max: 12,
+        indicators: [
+          { id: "C3.1", title: "Бүтэц, логик дараалал", levels: [
+            { score: 0, label: "1", text: "Эмх цэгцгүй, логик дараалалгүй" },
+            { score: 1, label: "2", text: "Ерөнхий дараалалтай боловч агуулгын шилжилт сул" },
+            { score: 2, label: "3", text: "Модульчилсан, логик дараалалтай" },
+            { score: 3, label: "4", text: "Богино, зорилтот нэгжүүдэд задлан, шаталсан байдлаар зохион байгуулсан" }
+          ]},
+          { id: "C3.2", title: "Танин мэдэхүйн ачаалал", levels: [
+            { score: 0, label: "1", text: "Мэдээлэл хэт их, нэг дор төвлөрсөн, танин мэдэхүйн ачаалал өндөр" },
+            { score: 1, label: "2", text: "Агуулгыг хуваарилсан боловч зарим хэсэгт мэдээллийн нягтрал их" },
+            { score: 2, label: "3", text: "Агуулгыг хэмжээгээр тохируулж, мэдээллийн нягтралыг зохистой хуваарилсан" },
+            { score: 3, label: "4", text: "Чухал агуулгыг онцлон тодруулж, илүүдэл давхардлыг багасган, мэдээллийн урсгалыг суралцах үйл явцад нийцүүлэн оновчтой зохион байгуулсан" }
+          ]},
+          { id: "C3.3", title: "Дизайн", levels: [
+            { score: 0, label: "1", text: "Дизайн зохион байгуулалт сул" },
+            { score: 1, label: "2", text: "Ерөнхий дизайнтай боловч визуал зохицол сул" },
+            { score: 2, label: "3", text: "Өнгө, фонт, график, зай зохистой нэгдмэл дизайнтай" },
+            { score: 3, label: "4", text: "Хэрэглэгчийн туршлагад (UX) суурилсан, суралцахуйг дэмжсэн дизайнтай" }
+          ]},
+          { id: "C3.4", title: "Дотоод логик", levels: [
+            { score: 0, label: "1", text: "Агуулга, үйл ажиллагаа, үнэлгээ хоорондын уялдаа сул" },
+            { score: 1, label: "2", text: "Зарим хэсэг нь логик уялдаатай" },
+            { score: 2, label: "3", text: "Логик уялдаа сайтай, дараалсан урсгалтай" },
+            { score: 3, label: "4", text: "Энгийнээс төвөгтэй рүү шаталсан, суралцахуйг дэмжсэн, логик уялдаа бүхий" }
+          ]}
+        ]
+      },
+      {
+        id: "C4.Шалгуур 4",
+        title: "Онлайн харилцаа ба оролцоо",
+        max: 12,
+        indicators: [
+          { id: "C4.1", title: "Танин мэдэхүйн оролцоо", levels: [
+            { score: 0, label: "1", text: "Зөвхөн мэдээлэл дамжуулах, санах, ойлгох даалгавар давамгай" },
+            { score: 1, label: "2", text: "Харьцуулах, тайлбарлах даалгавар хэсэгчлэн орсон" },
+            { score: 2, label: "3", text: "Задлан шинжлэх, нэгтгэн дүгнэх даалгавар тогтмол орсон" },
+            { score: 3, label: "4", text: "Асуудал дэвшүүлэх, мэдээлэл цуглуулах, задлан шинжлэх, дүгнэлт гаргах 4 үе шат тодорхой ажиглагдсан" }
+          ]},
+          { id: "C4.2", title: "Нийгмийн оролцоо", levels: [
+            { score: 0, label: "1", text: "Оюутан хоорондын харилцаа бараг байхгүй, идэвхгүй оролцоо давамгай" },
+            { score: 1, label: "2", text: "Хэлэлцүүлэг байгаа боловч оюутнуудын оролцоо бага" },
+            { score: 2, label: "3", text: "Суралцагчид харилцан хариу бичиж, хэлэлцүүлэгт тогтмол оролцсон" },
+            { score: 3, label: "4", text: "Суралцагчдын ≥70% нь 2 ба түүнээс дээш нотолгоо, тайлбар бүхий хариу бичсэн, хамтын санаа хөгжүүлэлт ажиглагдсан" }
+          ]},
+          { id: "C4.3", title: "Багшийн оролцоо", levels: [
+            { score: 0, label: "1", text: "Чиглүүлэлтгүй, багшийн идэвхтэй оролцоо бараг ажиглагдахгүй" },
+            { score: 1, label: "2", text: "Зарим зааварчилгаа, тайлбар өгсөн боловч тогтвортой чиглүүлэг хийгдээгүй" },
+            { score: 2, label: "3", text: "Тогтмол чиглүүлэг хийж дэмжлэг үзүүлэн, суралцах үйл явцыг удирдан чиглүүлсэн" },
+            { score: 3, label: "4", text: "Суралцагчдын гүйцэтгэл, оролцоонд тулгуурлан заах арга, агуулгыг уян хатан өөрчилсөн нь нотлогдсон" }
+          ]},
+          { id: "C4.4", title: "Хэлэлцүүлэг", levels: [
+            { score: 0, label: "1", text: "Нээлттэй боловч чиглэлгүй, тодорхой зорилгогүй" },
+            { score: 1, label: "2", text: "Ерөнхий удирдамжтай, оролцооны шаардлага бага" },
+            { score: 2, label: "3", text: "Чиглүүлсэн асуулт болон тодорхой үнэлгээний шалгууртай" },
+            { score: 3, label: "4", text: "Танин мэдэхүйн шаталсан асуулт, оролцооны тодорхой шаардлага, үнэлгээний шалгуур, эргэцүүлэл шаардсан бүтэцтэй" }
+          ]}
+        ]
+      },
+      {
+        id: "C5.Шалгуур 5",
+        title: "Үнэлгээ ба эргэх холбоо",
+        max: 12,
+        indicators: [
+          { id: "C5.1", title: "Явцын үнэлгээ", levels: [
+            { score: 0, label: "1", text: "Явцын үнэлгээний механизм байхгүй" },
+            { score: 1, label: "2", text: "Зарим богино сорил, шалгалт орсон боловч сургалтын зорилго, дараалалтай уялдсан системтэй төлөвлөлтгүй" },
+            { score: 2, label: "3", text: "Бүлэг сэдэв бүрт багадаа 1 сорил, явцын үнэлгээ орсон" },
+            { score: 3, label: "4", text: "Дахин гүйцэтгэх боломжтой, эргэх холбоонд суурилсан, суралцагчийн ахицыг хянах, сайжруулах чиглэлтэй үнэлгээний тогтолцоо хэрэгжсэн" }
+          ]},
+          { id: "C5.2", title: "Нээлттэй байдал", levels: [
+            { score: 0, label: "1", text: "Үнэлгээний шалгуур LMS дээр байршаагүй эсвэл суралцагчид харагдахгүй" },
+            { score: 1, label: "2", text: "Рубрик байршуулсан боловч гүйцэтгэлийн түвшний тайлбар бүрэн бус" },
+            { score: 2, label: "3", text: "Үнэлгээний шалгуур (рубрик) нийтэд нээлттэй, ойлгомжтой" },
+            { score: 3, label: "4", text: "Гүйцэтгэлийн түвшин бүрийн дэлгэрэнгүй тайлбар, жишээ бүхий үнэлгээний рубриктэй" }
+          ]},
+          { id: "C5.3", title: "Эргэх холбоо", levels: [
+            { score: 0, label: "1", text: "Эргэх холбоо байхгүй" },
+            { score: 1, label: "2", text: "Эргэх холбоотой боловч хоцрогдсон эсвэл ерөнхий" },
+            { score: 2, label: "3", text: "Даалгаврын дараа ихдээ 72 цагийн дотор эргэх холбоо өгсөн" },
+            { score: 3, label: "4", text: "Суралцагчийн цаашдын хөгжлийг чиглүүлсэн, сайжруулах арга санал болгосон, дахин гүйцэтгэх боломж олгосон" }
+          ]},
+          { id: "C5.4", title: "Өөрийн/чацуутны үнэлгээ", levels: [
+            { score: 0, label: "1", text: "Зөвхөн багш үнэлдэг" },
+            { score: 1, label: "2", text: "Зөвхөн өөрийн эсвэл зөвхөн чацуутны үнэлгээтэй" },
+            { score: 2, label: "3", text: "Багшийн үнэлгээг чацуутны эсвэл өөрийн үнэлгээтэй хослуулж хэрэглэсэн" },
+            { score: 3, label: "4", text: "Өөрийн, чацуутны болон багшийн гэсэн 3 үнэлгээг хослуулж хэрэглэсэн" }
+          ]}
+        ]
+      },
+      {
+        id: "C6.Шалгуур 6",
+        title: "Технологи ба хүртээмж",
+        max: 12,
+        indicators: [
+          { id: "C6.1", title: "Орчны бүтэц", levels: [
+            { score: 0, label: "1", text: "Эмх замбараагүй" },
+            { score: 1, label: "2", text: "Ерөнхий модуль бүтэцтэй боловч нэршил, дараалал бүрэн тодорхой бус" },
+            { score: 2, label: "3", text: "Хичээл бүр модультай, модуль бүрт зорилго, агуулга, даалгавар бүтэц тодорхой байрласан" },
+            { score: 3, label: "4", text: "Суралцагч төөрөх эрсдэлгүй сургалтын орчин бүрдсэн" }
+          ]},
+          { id: "C6.2", title: "Дотоод зохион байгуулалт", levels: [
+            { score: 0, label: "1", text: "Агуулга дараалалгүй байрласан" },
+            { score: 1, label: "2", text: "Ерөнхий дараалалтай боловч шатлал сул" },
+            { score: 2, label: "3", text: "Модуль/нэгжид нөхцөлт нээлт ашигласан эсвэл төгсгөлд нь үнэлгээ оруулсан" },
+            { score: 3, label: "4", text: "Модуль/нэгжид нөхцөлт нээлт ашигласан болон төгсгөлд нь үнэлгээ байрласан ахицтай дараалалтай" }
+          ]},
+          { id: "C6.3", title: "Технологийн интеграц", levels: [
+            { score: 0, label: "1", text: "Технологийг зөвхөн байршуулах зорилгоор ашигласан" },
+            { score: 1, label: "2", text: "Технологийг тодорхой хэсэгт ашигласан боловч зорилготой бүрэн уялдаагүй" },
+            { score: 2, label: "3", text: "Технологийн хэрэглээ сургалтын зорилго, үйл ажиллагаатай уялдсан" },
+            { score: 3, label: "4", text: "Технологи нь агуулга, үйл ажиллагаа, үнэлгээтэй холбогдсон (жишээ: видео → даалгавар → үнэлгээ)" }
+          ]},
+          { id: "C6.4", title: "Хүртээмж", levels: [
+            { score: 0, label: "1", text: "Хүртээмжийн шаардлагыг огт харгалзаагүй" },
+            { score: 1, label: "2", text: "Зарим хэсэгт хүртээмжийн тохируулга хийсэн" },
+            { score: 2, label: "3", text: "Сабтайтл, зургийн тайлбар, уншихад ээлтэй фонт, өнгө зэрэг үндсэн шаардлагыг хангасан" },
+            { score: 3, label: "4", text: "UDL зарчимд нийцүүлэн нэг агуулгыг олон хэлбэр (текст, видео, аудио, интерактив гэх мэт)-ээр хүргэсэн" }
+          ]}
+        ]
+      }
+    ];
+
+    // localStorage-аас хадгалсан рубрик байвал уншина
+    (function(){
+      try {
+        const saved = localStorage.getItem("rubricData");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length === rubric.length) {
+            rubric = parsed;
+          }
+        }
+      } catch(e) {}
+    })();
+
+    const state = { scores: {}, reasons: {}, evidenceSummary: [] };
+
+    const criteriaEl = document.getElementById("criteria");
+    const barsEl = document.getElementById("bars");
+    const totalScoreEl = document.getElementById("totalScore");
+    const totalPercentEl = document.getElementById("totalPercent");
+    const designScoreEl = document.getElementById("designScore");
+    const implementationScoreEl = document.getElementById("implementationScore");
+    const qualityLabelEl = document.getElementById("qualityLabel");
+
+    // "Сургалтын бэлтгэл" (нийт дээд оноо: 48)
+    const DESIGN_IDS = [
+      "C1.1","C1.2","C1.3","C1.4",
+      "C2.1","C2.2","C2.3","C2.4",
+      "C3.1","C3.2","C3.3","C3.4",
+      "C5.2",
+      "C6.1","C6.3","C6.4"
+    ];
+    // "Сургалтын хэрэгжилт" (нийт дээд оноо: 24)
+    const IMPLEMENTATION_IDS = [
+      "C4.1","C4.2","C4.3","C4.4",
+      "C5.1","C5.3","C5.4",
+      "C6.2"
+    ];
+    const DESIGN_MAX = 48;
+    const IMPLEMENTATION_MAX = 24;
+    const overallAiTextEl = document.getElementById("overallAiText");
+    const evidenceSummaryBox = document.getElementById("evidenceSummaryBox");
+    const radarCanvas = document.getElementById("radarChart");
+    let radarChart = null;
+
+    // ===== DIAGNOSTIC MATRIX =====
+    const DIAG_ZONES = {
+      Q1:{ name:"Суралцагч төвтэй, технологиор дэмжсэн онлайн сургалт",
+           desc:"Тухайн онлайн сургалт технологи, хүртээмжийн хувьд хангалттай бөгөөд суралцагчийн оролцоо, харилцаа, үнэлгээ, эргэх холбоо зохистой түвшинд байна.",
+           bg:"#eaf8f0", border:"#bbf0d0", nameColor:"#16a34a", dot:"#16a34a" },
+      Q2:{ name:"Багш/агуулга төвтэй, технологиор дэмжсэн онлайн сургалт",
+           desc:"Тухайн онлайн сургалт технологи, материал, хүртээмжийн хувьд боломжийн боловч суралцагчийн оролцоо, онлайн харилцаа, эргэх холбоо, суралцагч төвтэй зохион байгуулалт сул байна.",
+           bg:"#eef3ff", border:"#c7d9ff", nameColor:"#2242bb", dot:"#315efb" },
+      Q3:{ name:"Багш/агуулга төвтэй, технологийн дэмжлэг сул онлайн сургалт",
+           desc:"Тухайн онлайн сургалт технологи, хүртээмж болон суралцагч төвтэй зохион байгуулалтын аль алинд нь сайжруулалт шаардлагатай байна.",
+           bg:"#fff0f0", border:"#ffcccc", nameColor:"#c0392b", dot:"#ef4444" },
+      Q4:{ name:"Суралцагч төвтэй, технологийн дэмжлэг сул онлайн сургалт",
+           desc:"Тухайн онлайн сургалт суралцагчийн оролцоо, харилцаа, үнэлгээний хувьд боломжийн боловч технологи, хүртээмж, сургалтын хэрэглэгдэхүүн, зохион байгуулалтын дэмжлэгийг сайжруулах шаардлагатай байна.",
+           bg:"#fffbeb", border:"#fde68a", nameColor:"#92400e", dot:"#f59e0b" }
+    };
+    let diagChartInstance = null;
+
+    const diagQuadrantPlugin = {
+      id:"diagQuadrants",
+      beforeDraw(chart) {
+        const { ctx, chartArea:{ left, top, right, bottom }, scales:{ x, y } } = chart;
+        const mx = x.getPixelForValue(60), my = y.getPixelForValue(60);
+        ctx.save();
+        const f = (c, rx, ry, rw, rh) => { ctx.fillStyle = c; ctx.fillRect(rx, ry, rw, rh); };
+        f("rgba(22,163,74,.07)",  mx,   top,  right-mx, my-top);
+        f("rgba(49,94,251,.07)",  left, top,  mx-left,  my-top);
+        f("rgba(239,68,68,.07)",  left, my,   mx-left,  bottom-my);
+        f("rgba(245,158,11,.07)", mx,   my,   right-mx, bottom-my);
+        ctx.strokeStyle = "rgba(100,116,139,.35)";
+        ctx.lineWidth = 1.5; ctx.setLineDash([5,4]);
+        ctx.beginPath(); ctx.moveTo(mx, top);  ctx.lineTo(mx, bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(left, my); ctx.lineTo(right, my);  ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    };
+
+    function calculateXIndex(pcts) {
+      return (pcts.C1 + pcts.C4 + pcts.C5) / 3;
+    }
+    function calculateYIndex(pcts) {
+      return (pcts.C2 + pcts.C3 + pcts.C6) / 3;
+    }
+    function classifyMatrixPosition(X, Y) {
+      if (X >= 60 && Y >= 60) return "Q1";
+      if (X <  60 && Y >= 60) return "Q2";
+      if (X <  60 && Y <  60) return "Q3";
+      return "Q4";
+    }
+    function renderDiagnostic(criterionPercents) {
+      const X = calculateXIndex(criterionPercents);
+      const Y = calculateYIndex(criterionPercents);
+      document.getElementById("diagX").textContent = X.toFixed(1);
+      document.getElementById("diagY").textContent = Y.toFixed(1);
+
+      const q    = classifyMatrixPosition(X, Y);
+      const zone = DIAG_ZONES[q];
+
+      // Chart
+      const canvas = document.getElementById("diagChart");
+      if (diagChartInstance) diagChartInstance.destroy();
+      diagChartInstance = new Chart(canvas.getContext("2d"), {
+        type:"scatter", plugins:[diagQuadrantPlugin],
+        data:{ datasets:[{ data:[{x:X,y:Y}], backgroundColor:zone.dot,
+          borderColor:"#fff", borderWidth:2, pointRadius:9, pointHoverRadius:12 }] },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx =>
+            [` X=${ctx.parsed.x.toFixed(1)}  Y=${ctx.parsed.y.toFixed(1)}`, ` ${zone.name}`]
+          }}},
+          scales:{
+            x:{ min:0, max:100, grid:{color:"#f0f3f9"}, ticks:{stepSize:25, callback:v=>v+"%"} },
+            y:{ min:0, max:100, grid:{color:"#f0f3f9"}, ticks:{stepSize:25, callback:v=>v+"%"} }
+          }
+        }
+      });
+
+      // Zone
+      document.getElementById("diagZone").style.cssText =
+        `background:${zone.bg};border:1px solid ${zone.border};border-radius:12px;padding:12px 14px;margin-bottom:12px`;
+      document.getElementById("diagZone").innerHTML =
+        `<div style="font-weight:800;font-size:13px;color:${zone.nameColor};margin-bottom:5px">📍 ${zone.name}</div>
+         <div style="font-size:12px;line-height:1.75;color:#334155">${zone.desc}</div>`;
+
+      // diagCard always visible
+    }
+
+    function showStatus(msg, ok=true){
+      const hero = document.getElementById("statusBoxHero");
+      if (hero) {
+        hero.textContent = msg;
+        hero.style.display = "block";
+        hero.style.background = ok ? "rgba(15,157,88,.25)" : "rgba(239,68,68,.25)";
+        hero.style.borderColor = ok ? "rgba(15,157,88,.5)" : "rgba(239,68,68,.5)";
+      }
+      const bottom = document.getElementById("statusBoxBottom");
+      if (bottom) {
+        bottom.textContent = msg;
+        bottom.className = "status show " + (ok ? "ok" : "err");
+      }
+    }
+
+    function getQualityLabel(percent){
+      if (percent >= 90) return "Маш өндөр чанартай";
+      if (percent >= 75) return "Бага зэргийн засвар хэрэгтэй";
+      if (percent >= 60) return "Дунд зэргийн засвар хийх шаардлагатай";
+      return "Сайжруулах шаардлагатай";
+    }
+
+    function criterionTotal(criterion){
+      return criterion.indicators.reduce((sum, indicator) => sum + (state.scores[indicator.id] ?? 0), 0);
+    }
+
+    function totalScore(){
+      return rubric.reduce((sum, criterion) => sum + criterionTotal(criterion), 0);
+    }
+
+    async function fetchScoreAdvice() {
+      overallAiTextEl.value = "⏳ AI зөвлөмж бэлдэж байна...";
+      overallAiTextEl.disabled = true;
+      try {
+        const res = await fetch("/api/score-advice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            scores: { ...state.scores },
+            rubric: rubric.map(c => ({
+              id: c.id, title: c.title,
+              indicators: c.indicators.map(i => ({ id: i.id, title: i.title }))
+            }))
+          })
+        });
+        const data = await res.json();
+        overallAiTextEl.value = data.ok ? data.advice : "⚠️ AI зөвлөмж үүсгэж чадсангүй. Энд гараар бичих боломжтой.";
+      } catch {
+        overallAiTextEl.value = "⚠️ AI зөвлөмж үүсгэж чадсангүй. Энд гараар бичих боломжтой.";
+      } finally {
+        overallAiTextEl.disabled = false;
+      }
+    }
+
+    function renderEvidenceSummary(items = []){
+      evidenceSummaryBox.style.display = "block";
+      if (!Array.isArray(items) || items.length === 0) {
+        evidenceSummaryBox.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">📋 AI НОТОЛГООНЫ ТОВЧ ДҮГНЭЛТ</div><div class="evidence-item">Нотолгооны товч дүгнэлт олдсонгүй.</div>`;
+        return;
+      }
+      evidenceSummaryBox.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;padding-top:14px;border-top:1px solid var(--line);">📋 AI НОТОЛГООНЫ ТОВЧ ДҮГНЭЛТ</div>` +
+        items.map(item => `<div class="evidence-item">${String(item)}</div>`).join("");
+    }
+
+    function renderRadarChart(){
+      const labels = rubric.map((c, i) => [`Шалгуур ${i + 1}.`]);
+      const data = rubric.map(c => criterionTotal(c));
+      const maxScore = rubric[0]?.max || 12;
+
+      if (radarChart) radarChart.destroy();
+
+      radarChart = new Chart(radarCanvas, {
+        type: "radar",
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            fill: true,
+            backgroundColor: "rgba(49, 94, 251, 0.18)",
+            borderColor: "#315efb",
+            borderWidth: 2,
+            pointBackgroundColor: "#315efb",
+            pointBorderColor: "#ffffff",
+            pointHoverBackgroundColor: "#ffffff",
+            pointHoverBorderColor: "#315efb",
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => `${ctx.raw}/${maxScore}` } }
+          },
+          scales: {
+            r: {
+              min: 0, max: maxScore,
+              ticks: { stepSize: 3, backdropColor: "transparent", color: "#64748b" },
+              grid: { color: "#dbe5f1" },
+              angleLines: { color: "#dbe5f1" },
+              pointLabels: { color: "#172033", font: { size: 13, weight: "600" } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderSummary(){
+      try { localStorage.setItem("nnrubric_diag_scores", JSON.stringify(state.scores)); } catch(e) {}
+      const total = totalScore();
+      const max = rubric.reduce((s, c) => s + c.max, 0);
+      const percent = Math.round((total / max) * 100);
+
+      totalScoreEl.textContent = total;
+      totalPercentEl.textContent = percent + "%";
+
+      const designScore = DESIGN_IDS.reduce((s, id) => s + (state.scores[id] ?? 0), 0);
+      const implementationScore = IMPLEMENTATION_IDS.reduce((s, id) => s + (state.scores[id] ?? 0), 0);
+      designScoreEl.textContent = `${designScore}/${DESIGN_MAX}`;
+      implementationScoreEl.textContent = `${implementationScore}/${IMPLEMENTATION_MAX}`;
+
+      qualityLabelEl.textContent = getQualityLabel(percent);
+
+      qualityLabelEl.style.background =
+        percent >= 90 ? "#eaf8f0" : percent >= 75 ? "#eef4ff" :
+        percent >= 60 ? "#fff7e8" : "#fff0f0";
+      qualityLabelEl.style.color =
+        percent >= 90 ? "#0f9d58" : percent >= 75 ? "#315efb" :
+        percent >= 60 ? "#b7791f" : "#c0392b";
+
+      barsEl.innerHTML = "";
+      rubric.forEach(criterion => {
+        const score = criterionTotal(criterion);
+        const ratio = Math.round((score / criterion.max) * 100);
+        const box = document.createElement("div");
+        box.className = "bar-wrap";
+        box.innerHTML = `
+          <div class="bar-top"><strong>${criterion.id}</strong><span>${score}/${criterion.max}</span></div>
+          <div class="bar"><div style="width:${ratio}%"></div></div>
+          <div style="font-size:12px;color:#667085;margin-top:6px;">${criterion.title}</div>`;
+        barsEl.appendChild(box);
+      });
+
+      // Criterion percentages for diagnostic (always rendered)
+      const cpcts = {};
+      rubric.forEach(c => {
+        cpcts[c.id.split(".")[0]] = Math.round(criterionTotal(c) / c.max * 100);
+      });
+      renderDiagnostic(cpcts);
+
+      const allFilled = rubric.flatMap(c => c.indicators).every(i => state.scores[i.id] != null);
+      if (allFilled) {
+        if (!overallAiTextEl.value.trim()) fetchScoreAdvice();
+      } else {
+        if (!overallAiTextEl.value.trim()) overallAiTextEl.disabled = false;
+      }
+
+      renderRadarChart();
+    }
+
+    function renderCriteria(){
+      criteriaEl.innerHTML = "";
+      rubric.forEach(criterion => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const head = document.createElement("div");
+        head.className = "criterion-head";
+        head.innerHTML = `
+          <div>
+            <div style="font-size:12px;font-weight:800;color:#5b6880;margin-bottom:6px;">${criterion.id}</div>
+            <h2 class="criterion-title">${criterion.title}</h2>
+          </div>
+          <div class="score-pill">Оноо: ${criterionTotal(criterion)} / ${criterion.max}</div>`;
+        card.appendChild(head);
+
+        criterion.indicators.forEach(indicator => {
+          const section = document.createElement("div");
+          section.className = "indicator";
+          section.innerHTML = `
+            <div class="indicator-top">
+              <div>
+                <div class="indicator-code">${indicator.id}</div>
+                <h3 class="indicator-title">${indicator.title}</h3>
+              </div>
+              <div class="indicator-value">Сонгосон оноо: <strong>${state.scores[indicator.id] ?? "—"}</strong></div>
+            </div>
+            ${state.reasons[indicator.id] ? `<div style="font-size:13px;color:#4b5563;background:#f4f7ff;border:1px solid #dbe5ff;border-radius:10px;padding:8px 12px;margin-bottom:10px;">🤖 ${state.reasons[indicator.id]}</div>` : ""}`;
+
+          const levels = document.createElement("div");
+          levels.className = "levels";
+
+          indicator.levels.forEach(level => {
+            const btn = document.createElement("div");
+            btn.className = "level" + (state.scores[indicator.id] === level.score ? " active" : "");
+            btn.innerHTML = `
+              <div class="level-head">
+                <span class="level-tag">Түвшин ${level.label}</span>
+                <span class="level-score">${level.score} оноо</span>
+              </div>
+              <div class="level-text">${level.text}</div>`;
+            btn.addEventListener("click", () => {
+              state.scores[indicator.id] = level.score;
+              renderCriteria();
+              renderSummary();
+            });
+            levels.appendChild(btn);
+          });
+
+          section.appendChild(levels);
+
+          card.appendChild(section);
+        });
+
+        criteriaEl.appendChild(card);
+      });
+    }
+
+    // ===== RUBRIC EDITOR =====
+    function openEditor(){
+      const body = document.getElementById("editorBody");
+      body.innerHTML = "";
+
+      rubric.forEach((criterion, ci) => {
+        const sec = document.createElement("div");
+        sec.className = "editor-criterion";
+
+        // Criterion head
+        const chead = document.createElement("div");
+        chead.className = "editor-criterion-head";
+        chead.innerHTML = `<span>${criterion.id}</span>`;
+        const cnameInput = document.createElement("input");
+        cnameInput.className = "editor-cname";
+        cnameInput.value = criterion.title;
+        cnameInput.dataset.ci = ci;
+        cnameInput.dataset.field = "ctitle";
+        chead.appendChild(cnameInput);
+        sec.appendChild(chead);
+
+        // Indicators
+        const indsEl = document.createElement("div");
+        indsEl.className = "editor-indicators";
+
+        criterion.indicators.forEach((ind, ii) => {
+          const indEl = document.createElement("div");
+          indEl.className = "editor-indicator";
+
+          const nameRow = document.createElement("div");
+          nameRow.className = "editor-iname-row";
+          nameRow.innerHTML = `<span class="editor-icode">${ind.id}</span>`;
+          const inameInput = document.createElement("input");
+          inameInput.className = "editor-iname";
+          inameInput.value = ind.title;
+          inameInput.dataset.ci = ci;
+          inameInput.dataset.ii = ii;
+          inameInput.dataset.field = "ititle";
+          nameRow.appendChild(inameInput);
+          indEl.appendChild(nameRow);
+
+          const levelsGrid = document.createElement("div");
+          levelsGrid.className = "editor-levels";
+
+          ind.levels.forEach((lv, li) => {
+            const lvEl = document.createElement("div");
+            lvEl.className = "editor-level";
+            lvEl.innerHTML = `<div class="editor-level-head">Түвшин ${lv.label} — ${lv.score} оноо</div>`;
+            const ta = document.createElement("textarea");
+            ta.value = lv.text;
+            ta.dataset.ci = ci;
+            ta.dataset.ii = ii;
+            ta.dataset.li = li;
+            ta.dataset.field = "ltext";
+            lvEl.appendChild(ta);
+            levelsGrid.appendChild(lvEl);
+          });
+
+          indEl.appendChild(levelsGrid);
+          indsEl.appendChild(indEl);
+        });
+
+        sec.appendChild(indsEl);
+        body.appendChild(sec);
+      });
+
+      document.getElementById("editorOverlay").classList.add("open");
+    }
+
+    function saveEditor(){
+      const body = document.getElementById("editorBody");
+
+      // Criterion titles
+      body.querySelectorAll("[data-field='ctitle']").forEach(el => {
+        const ci = parseInt(el.dataset.ci);
+        rubric[ci].title = el.value.trim() || rubric[ci].title;
+      });
+
+      // Indicator titles
+      body.querySelectorAll("[data-field='ititle']").forEach(el => {
+        const ci = parseInt(el.dataset.ci);
+        const ii = parseInt(el.dataset.ii);
+        rubric[ci].indicators[ii].title = el.value.trim() || rubric[ci].indicators[ii].title;
+      });
+
+      // Level texts
+      body.querySelectorAll("[data-field='ltext']").forEach(el => {
+        const ci = parseInt(el.dataset.ci);
+        const ii = parseInt(el.dataset.ii);
+        const li = parseInt(el.dataset.li);
+        rubric[ci].indicators[ii].levels[li].text = el.value.trim() || rubric[ci].indicators[ii].levels[li].text;
+      });
+
+      closeEditor();
+
+      // localStorage-д хадгалах
+      try { localStorage.setItem("rubricData", JSON.stringify(rubric)); } catch(e) {}
+
+      // UI болон зөвлөмж шинэчлэх
+      overallAiTextEl.value = "";
+      renderCriteria();
+      renderSummary();
+
+      showStatus("Рубрик амжилттай хадгалагдлаа. UI шинэчлэгдлээ.", true);
+    }
+
+    function closeEditor(){
+      document.getElementById("editorOverlay").classList.remove("open");
+    }
+
+    document.getElementById("toggleToolsBtn").addEventListener("click", function(){
+      const tools = document.getElementById("editorTools");
+      const visible = tools.style.display === "flex";
+      tools.style.display = visible ? "none" : "flex";
+    });
+
+    document.getElementById("openEditorBtn").addEventListener("click", openEditor);
+    document.getElementById("closeEditorBtn").addEventListener("click", closeEditor);
+    document.getElementById("cancelEditorBtn").addEventListener("click", closeEditor);
+    document.getElementById("saveEditorBtn").addEventListener("click", saveEditor);
+    document.getElementById("editorOverlay").addEventListener("click", function(e){
+      if (e.target === this) closeEditor();
+    });
+
+    // ===== PAYLOAD & SUBMIT =====
+    function getPayload(){
+      const total = totalScore();
+      const max = rubric.reduce((s, c) => s + c.max, 0);
+      const percent = Math.round((total/max)*100);
+      return {
+        courseCode: document.getElementById("courseCode").value,
+        schoolName: document.getElementById("schoolName").value,
+        evaluator: document.getElementById("evaluator").value,
+        evalDate: document.getElementById("evalDate").value,
+        totalScore: total, maxScore: max, percent,
+        quality: getQualityLabel(percent),
+        overallAiAdvice: overallAiTextEl.value,
+        criterionTotals: Object.fromEntries(rubric.map(c => [c.id, criterionTotal(c)])),
+        criterionPercents: Object.fromEntries(rubric.map(c => [c.id, Math.round((criterionTotal(c)/c.max)*100)])),
+        scores: state.scores,
+        evidenceSummary: state.evidenceSummary,
+        exportedAt: new Date().toISOString()
+      };
+    }
+
+    async function submitEvaluation() {
+      const payload = getPayload();
+      if (!payload.courseCode || !payload.evaluator) {
+        showStatus("Хичээлийн нэр, үнэлгээ хийж буй багшийн кодыг бүрэн оруулна уу.", false);
+        return;
+      }
+      const unscored = rubric.flatMap(c => c.indicators).filter(i => state.scores[i.id] == null);
+      if (unscored.length) {
+        showStatus(`Бүх үзүүлэлтийг үнэлнэ үү. Үлдсэн: ${unscored.length}`, false);
+        return;
+      }
+      try {
+        const res = await fetch("/api/evaluations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+          showStatus("Үнэлгээг амжилттай илгээлээ. Бидний судалгааны ажилд тусалсанд БАЯРЛАЛАА. Танд амжилт хүсье!", true);
+        } else {
+          showStatus(data.message || "Хадгалахад алдаа гарлаа.", false);
+        }
+      } catch {
+        showStatus("Серверт холбогдож чадсангүй.", false);
+      }
+    }
+
+    document.getElementById("submitBtnBottom").addEventListener("click", submitEvaluation);
+
+    function downloadRubric() {
+      const rows = [["Шалгуур код", "Шалгуур гарчиг", "Үзүүлэлт код", "Үзүүлэлт гарчиг",
+        "Түвшин 1 (0 оноо)", "Түвшин 2 (1 оноо)", "Түвшин 3 (2 оноо)", "Түвшин 4 (3 оноо)"]];
+      rubric.forEach(c => {
+        c.indicators.forEach(ind => {
+          const lvl = [0, 1, 2, 3].map(s => {
+            const l = ind.levels.find(x => x.score === s);
+            return l ? l.text : "";
+          });
+          rows.push([c.id, c.title, ind.id, ind.title, ...lvl]);
+        });
+      });
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws["!cols"] = [{ wch: 14 }, { wch: 36 }, { wch: 10 }, { wch: 30 },
+        { wch: 44 }, { wch: 44 }, { wch: 44 }, { wch: 44 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Рубрик");
+      XLSX.writeFile(wb, `rubric_${new Date().toISOString().split("T")[0]}.xlsx`);
+    }
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      state.scores = {};
+      state.reasons = {};
+      state.evidenceSummary = [];
+      document.getElementById("courseCode").value = "";
+      document.getElementById("schoolName").value = "";
+      document.getElementById("evaluator").value = "";
+      document.getElementById("evalDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("overallAiText").value = "";
+      document.getElementById("evidenceSummaryBox").style.display = "none";
+      document.getElementById("statusBoxBottom").textContent = "";
+      renderCriteria();
+      renderSummary();
+    });
+
+    overallAiTextEl.addEventListener("input", function(){
+      this.style.height = "auto";
+      this.style.height = this.scrollHeight + "px";
+    });
+
+    renderCriteria();
+    renderSummary();
+
+  </script>
+
+
+</html>
