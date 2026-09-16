@@ -400,6 +400,16 @@
                   <div class="value" id="totalPercent">0%</div>
                 </div>
               </div>
+              <div class="big-score">
+                <div class="stat">
+                  <div class="label">Сургалтын бэлтгэл</div>
+                  <div class="value" id="designScore" style="font-size:20px">0/48</div>
+                </div>
+                <div class="stat">
+                  <div class="label">Сургалтын хэрэгжилт</div>
+                  <div class="value" id="implementationScore" style="font-size:20px">0/24</div>
+                </div>
+              </div>
               <div class="quality" id="qualityLabel">Сайжруулах шаардлагатай</div>
             </div>
             <div class="radar-mini" style="height:200px;">
@@ -714,7 +724,26 @@
     const barsEl = document.getElementById("bars");
     const totalScoreEl = document.getElementById("totalScore");
     const totalPercentEl = document.getElementById("totalPercent");
+    const designScoreEl = document.getElementById("designScore");
+    const implementationScoreEl = document.getElementById("implementationScore");
     const qualityLabelEl = document.getElementById("qualityLabel");
+
+    // "Сургалтын бэлтгэл" (нийт дээд оноо: 48)
+    const DESIGN_IDS = [
+      "C1.1","C1.2","C1.3","C1.4",
+      "C2.1","C2.2","C2.3","C2.4",
+      "C3.1","C3.2","C3.3","C3.4",
+      "C5.2",
+      "C6.1","C6.3","C6.4"
+    ];
+    // "Сургалтын хэрэгжилт" (нийт дээд оноо: 24)
+    const IMPLEMENTATION_IDS = [
+      "C4.1","C4.2","C4.3","C4.4",
+      "C5.1","C5.3","C5.4",
+      "C6.2"
+    ];
+    const DESIGN_MAX = 48;
+    const IMPLEMENTATION_MAX = 24;
     const overallAiTextEl = document.getElementById("overallAiText");
     const evidenceSummaryBox = document.getElementById("evidenceSummaryBox");
     const radarCanvas = document.getElementById("radarChart");
@@ -1006,6 +1035,12 @@
 
       totalScoreEl.textContent = total;
       totalPercentEl.textContent = percent + "%";
+
+      const designScore = DESIGN_IDS.reduce((s, id) => s + (state.scores[id] ?? 0), 0);
+      const implementationScore = IMPLEMENTATION_IDS.reduce((s, id) => s + (state.scores[id] ?? 0), 0);
+      designScoreEl.textContent = `${designScore}/${DESIGN_MAX}`;
+      implementationScoreEl.textContent = `${implementationScore}/${IMPLEMENTATION_MAX}`;
+
       qualityLabelEl.textContent = getQualityLabel(percent);
 
       qualityLabelEl.style.background =
