@@ -80,13 +80,6 @@
     .zone-red{background:#fff0f0;border:1px solid #ffcccc}.zone-red .z-name{color:#c0392b}
     .zone-amber{background:#fffbeb;border:1px solid #fde68a}.zone-amber .z-name{color:#92400e}
 
-    /* Priority */
-    .priority-box{margin:0 16px 16px;background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:14px 15px}
-    .priority-box .p-head{font-size:11px;font-weight:700;color:var(--primary);margin-bottom:9px;letter-spacing:.4px}
-    .priority-item{font-size:13px;line-height:1.75;color:var(--text);margin-bottom:6px;padding-left:14px;position:relative}
-    .priority-item::before{content:"▸";position:absolute;left:0;color:var(--primary)}
-    .priority-item:last-child{margin-bottom:0}
-
     .divider{height:1px;background:var(--line);margin:0 16px 14px}
   </style>
 </head>
@@ -168,12 +161,6 @@
           </div>
           <div class="divider"></div>
           <div id="diagnosisZone"></div>
-          <div id="priorityBox">
-            <div class="priority-box">
-              <div class="p-head">⚡ AI ЗӨВЛӨМЖ</div>
-              <div id="priorityContent"></div>
-            </div>
-          </div>
         </div>
 
       </div>
@@ -207,15 +194,6 @@ const MATRIX_ZONES = {
        style:"zone-amber", dot:"#f59e0b" }
 };
 
-const CRITERION_ADVICE = {
-  C1:"Сургалтын зорилго, үр дүн болон үнэлгээний уялдааг нягтлах, CLO-г хэмжигдэхүйц болгон дахин томьёолох шаардлагатай.",
-  C2:"Агуулгын шинжлэх ухааны үндэслэл, эх сурвалжийн чанар болон материалын боловсруулалтыг сайжруулах шаардлагатай.",
-  C3:"Сургалтын дизайн, агуулгын бүтэц, логик дараалал болон танин мэдэхүйн ачааллыг тэнцвэртэй болгох шаардлагатай.",
-  C4:"Онлайн харилцаа ба оролцооны хэсэгт суралцагч хоорондын болон багш-суралцагчийн харилцааг идэвхжүүлэх шаардлагатай.",
-  C5:"Үнэлгээ ба эргэх холбооны хэсэгт явцын үнэлгээ, нээлттэй шалгуур, цаг тухайд нь эргэх холбоог сайжруулах шаардлагатай.",
-  C6:"Технологи ба хүртээмжийн хэсэгт холбоос, файл, төхөөрөмжийн нийцэл, LMS-ийн ашиглахад хялбар байдлыг сайжруулах шаардлагатай."
-};
-
 // ===== CALCULATION FUNCTIONS =====
 
 function calculateCriterionScore(indicatorIds, scores) {
@@ -241,19 +219,9 @@ function classifyMatrixPosition(X, Y, threshold = 60) {
   return "Q4";
 }
 
-function getLowestCriteria(criteriaPercents) {
-  return Object.entries(criteriaPercents)
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 2)
-    .map(([id]) => id);
-}
-
-function generateDiagnosticText(position, lowestCriteria) {
+function generateDiagnosticText(position) {
   const zone = MATRIX_ZONES[position];
-  return {
-    name: zone.name, desc: zone.desc, style: zone.style,
-    priorities: lowestCriteria.map(id => CRITERION_ADVICE[id]).filter(Boolean)
-  };
+  return { name: zone.name, desc: zone.desc, style: zone.style };
 }
 
 // ===== CHART =====
@@ -375,17 +343,13 @@ function run() {
   renderChart(X, Y);
 
   const position = classifyMatrixPosition(X, Y);
-  const lowest   = getLowestCriteria(criteriaPercents);
-  const diag     = generateDiagnosticText(position, lowest);
+  const diag     = generateDiagnosticText(position);
 
   document.getElementById("diagnosisZone").innerHTML = `
     <div class="zone-card ${diag.style}">
       <div class="z-name">📍 ${diag.name}</div>
       <div class="z-desc">${diag.desc}</div>
     </div>`;
-
-  document.getElementById("priorityContent").innerHTML =
-    diag.priorities.map(p => `<div class="priority-item">${p}</div>`).join("");
 }
 
 run();
