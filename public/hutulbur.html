@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Хөтөлбөрийн шинжилгээ — НН Рубрик</title>
+  <style>
+    :root {
+      --bg:#f6f8fc; --card:#fff; --line:#e6ebf3; --text:#172033;
+      --muted:#64748b; --primary:#315efb; --primary-soft:#eef3ff;
+      --green:#16a34a; --amber:#f59e0b; --red:#ef4444;
+      --shadow:0 10px 28px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+
+    .hero{
+      background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);
+      color:#fff;border-radius:24px;padding:24px 28px;
+      box-shadow:var(--shadow);margin-bottom:24px;
+      display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    }
+    .hero h1{margin:0;font-size:26px}
+    .hero p{margin:6px 0 0;color:rgba(255,255,255,.85);font-size:14px}
+    .btn{border:none;cursor:pointer;border-radius:12px;padding:10px 18px;font-weight:700;font-size:14px;transition:.2s}
+    .btn-white{background:#fff;color:#2242bb}
+    .btn-white:hover{transform:translateY(-1px)}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:#2242bb}
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+    .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+    .card-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .card-head h2{margin:0;font-size:17px}
+    .card-body{padding:20px}
+
+    .upload-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .file-input{border:1px dashed var(--line);border-radius:14px;padding:14px 16px;flex:1;min-width:240px;background:#f8faff;font-size:14px;color:var(--muted);cursor:pointer}
+    .file-input input{display:none}
+    .file-name{font-weight:700;color:var(--text)}
+
+    .status-line{font-size:13px;color:var(--muted);margin-top:10px}
+    .status-line.err{color:var(--red);font-weight:600}
+
+    table{width:100%;border-collapse:collapse}
+    th{padding:10px 14px;text-align:left;font-size:12px;font-weight:700;color:var(--muted);background:#f8faff;border-bottom:1px solid var(--line)}
+    td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .cell-wrap{max-width:280px}
+
+    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+    .badge-green{background:#eaf8f0;color:#16a34a}
+    .badge-blue{background:#eef3ff;color:#315efb}
+    .badge-amber{background:#fff7e8;color:#b7791f}
+    .badge-red{background:#fff0f0;color:#c0392b}
+
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+    .stat-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px 20px;box-shadow:var(--shadow)}
+    .stat-card .label{font-size:13px;color:var(--muted);margin-bottom:8px}
+    .stat-card .value{font-size:30px;font-weight:900;color:var(--text)}
+    .stat-card .sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+    .issue-list{margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:var(--text)}
+    .issue-list li{margin-bottom:4px}
+    .empty{padding:48px;text-align:center;color:var(--muted)}
+
+    .ai-box{background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:16px;font-size:14px;line-height:1.75;white-space:pre-line}
+
+    @media(max-width:900px){.stats{grid-template-columns:1fr 1fr}}
+    @media(max-width:600px){.stats{grid-template-columns:1fr}}
+
+    /* LOGIN */
+    .login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);display:flex;align-items:center;justify-content:center;z-index:999;}
+    .login-box{background:#fff;border-radius:24px;padding:36px 40px;width:100%;max-width:380px;box-shadow:0 24px 64px rgba(10,20,50,.25);text-align:center;}
+    .login-box h2{margin:0 0 6px;font-size:22px}
+    .login-box p{margin:0 0 24px;color:var(--muted);font-size:14px}
+    .login-box input{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px;outline:none;margin-bottom:12px;font-family:inherit;}
+    .login-box input:focus{border-color:var(--primary)}
+    .login-box button{width:100%;background:var(--primary);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .login-box button:hover{background:#2242bb}
+    .login-err{color:#ef4444;font-size:13px;margin-top:8px;display:none}
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🔐 Админ нэвтрэх</h2>
+    <p>Хөтөлбөрийн шинжилгээ харахын тулд нэвтэрнэ үү</p>
+    <input type="password" id="pwInput" placeholder="Нууц үг" />
+    <button id="loginBtn">Нэвтрэх</button>
+    <div class="login-err" id="loginErr">Нууц үг буруу байна.</div>
+  </div>
+</div>
+
+<div class="wrap" id="mainContent" style="display:none">
+  <div class="hero">
+    <div>
+      <h1>Хөтөлбөрийн шинжилгээ</h1>
+      <p>.docx хөтөлбөр оруулаад CLO/Bloom, үнэлгээний уялдаа, бүтэц/кредитийг AI-аар шалгана</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="/dashboard.html" class="btn btn-white">📊 Дашбоард</a>
+      <a href="/" class="btn btn-white">← Үнэлгээ хийх</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>📄 Хөтөлбөр оруулах</h2></div>
+    <div class="card-body">
+      <div class="upload-row">
+        <label class="file-input" id="fileLabel">
+          <span id="fileLabelText">.docx файл сонгох...</span>
+          <input type="file" id="fileInput" accept=".docx" />
+        </label>
+        <button class="btn btn-primary" id="analyzeBtn">Шинжлэх</button>
+      </div>
+      <div class="status-line" id="statusLine"></div>
+    </div>
+  </div>
+
+  <div id="resultsWrap" style="display:none">
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="label">CLO тоо</div>
+        <div class="value" id="statCloCount">—</div>
+        <div class="sub">хэмжигдэхүйц эсэх шалгасан</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Хэмжигдэхгүй CLO</div>
+        <div class="value" id="statUnmeasurable">—</div>
+        <div class="sub">сайжруулах шаардлагатай</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Үнэлгээгүй CLO</div>
+        <div class="value" id="statUnassessed">—</div>
+        <div class="sub">уялдааны матрицаас</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">C1 урьдчилсан оноо</div>
+        <div class="value" id="statC1">—</div>
+        <div class="sub">/12, рубрикийн С1 шалгуур</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🎯 CLO ба Bloom-ийн түвшин</h2></div>
+      <div class="card-body" style="padding:0">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th>CLO</th><th>Үйл үг</th><th>Bloom түвшин</th><th>Хэмжигдэх эсэх</th><th>Асуудал</th><th>Сайжруулсан хувилбар</th>
+            </tr></thead>
+            <tbody id="cloTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🧮 Үнэлгээ–CLO уялдааны матриц</h2></div>
+      <div class="card-body">
+        <div style="overflow-x:auto">
+          <table id="matrixTable"></table>
+        </div>
+        <div id="matrixNotes" style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.7"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🏗️ Бүтэц ба кредит</h2></div>
+      <div class="card-body">
+        <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+          <div class="stat-card">
+            <div class="label">Кредит</div>
+            <div class="value" id="statCredits">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Нийт цагийн ачаалал</div>
+            <div class="value" id="statHours">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="label">Долоо хоногийн хуваарь</div>
+            <div class="value" id="statWeeks">—</div>
+          </div>
+        </div>
+        <ul class="issue-list" id="structureIssues"></ul>
+        <div id="structureNotes" style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.7"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>📐 Рубрикийн C1 шалгуурт урьдчилсан нийцэл</h2></div>
+      <div class="card-body">
+        <div class="stats" style="grid-template-columns:repeat(4,1fr)" id="rubricAlignGrid"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>🤖 AI ЕРӨНХИЙ ДҮГНЭЛТ</h2></div>
+      <div class="card-body">
+        <div class="ai-box" id="overallSummaryBox">—</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="empty" id="emptyState">Хөтөлбөрийн .docx файлаа оруулж "Шинжлэх" товч дарна уу.</div>
+</div>
+
+<script>
+  let adminToken = localStorage.getItem("adminToken") || "";
+  let selectedFile = null;
+
+  // AUTH
+  async function tryLogin() {
+    const pw = document.getElementById("pwInput").value;
+    const err = document.getElementById("loginErr");
+    err.style.display = "none";
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        adminToken = data.token;
+        localStorage.setItem("adminToken", adminToken);
+        showMain();
+      } else {
+        err.style.display = "block";
+      }
+    } catch {
+      err.textContent = "Серверт холбогдож чадсангүй.";
+      err.style.display = "block";
+    }
+  }
+  document.getElementById("loginBtn").addEventListener("click", tryLogin);
+  document.getElementById("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+
+  function showMain() {
+    document.getElementById("loginOverlay").style.display = "none";
+    document.getElementById("mainContent").style.display = "block";
+  }
+  if (adminToken) showMain();
+
+  // FILE SELECT
+  const fileInput = document.getElementById("fileInput");
+  const fileLabelText = document.getElementById("fileLabelText");
+  fileInput.addEventListener("change", () => {
+    selectedFile = fileInput.files[0] || null;
+    fileLabelText.textContent = selectedFile ? selectedFile.name : ".docx файл сонгох...";
+  });
+
+  const statusLine = document.getElementById("statusLine");
+  const analyzeBtn = document.getElementById("analyzeBtn");
+
+  function showStatus(msg, isError) {
+    statusLine.textContent = msg;
+    statusLine.className = "status-line" + (isError ? " err" : "");
+  }
+
+  const BLOOM_COLORS = {
+    "Санах": "badge-blue", "Ойлгох": "badge-blue", "Хэрэглэх": "badge-green",
+    "Шинжлэх": "badge-amber", "Үнэлэх": "badge-amber", "Бүтээх": "badge-green"
+  };
+
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  analyzeBtn.addEventListener("click", async () => {
+    if (!selectedFile) {
+      showStatus("Эхлээд .docx файл сонгоно уу.", true);
+      return;
+    }
+    analyzeBtn.disabled = true;
+    showStatus("⏳ Хөтөлбөрийг шинжилж байна... энэ 10-30 секунд орчим үргэлжилж болно.", false);
+    document.getElementById("resultsWrap").style.display = "none";
+    document.getElementById("emptyState").style.display = "block";
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      const res = await fetch("/api/analyze-curriculum", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${adminToken}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        showStatus("⚠️ " + (data.message || "Шинжилгээ амжилтгүй боллоо."), true);
+        return;
+      }
+      showStatus("✅ Шинжилгээ амжилттай дууслаа: " + esc(data.fileName), false);
+      renderResult(data.result);
+    } catch (e) {
+      showStatus("⚠️ Серверт холбогдож чадсангүй. Дахин оролдоно уу.", true);
+    } finally {
+      analyzeBtn.disabled = false;
+    }
+  });
+
+  function renderResult(result) {
+    const clos = Array.isArray(result.clos) ? result.clos : [];
+    const matrix = result.assessmentMatrix || {};
+    const structure = result.structure || {};
+    const rubric = result.rubricAlignment || {};
+
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("resultsWrap").style.display = "block";
+
+    // Stats
+    const unmeasurable = clos.filter(c => c.measurable === false).length;
+    const unassessedCount = Array.isArray(matrix.unassessedClos) ? matrix.unassessedClos.length : 0;
+    const c1Total = ["C1_1","C1_2","C1_3","C1_4"].reduce((s, k) => s + Number(rubric[k]?.score || 0), 0);
+    document.getElementById("statCloCount").textContent = clos.length;
+    document.getElementById("statUnmeasurable").textContent = unmeasurable;
+    document.getElementById("statUnassessed").textContent = unassessedCount;
+    document.getElementById("statC1").textContent = c1Total + "/12";
+
+    // CLO table
+    document.getElementById("cloTableBody").innerHTML = clos.length ? clos.map(c => `
+      <tr>
+        <td><strong>${esc(c.id)}</strong><div class="cell-wrap" style="color:var(--muted);margin-top:3px">${esc(c.text)}</div></td>
+        <td>${esc(c.verb)}</td>
+        <td><span class="badge ${BLOOM_COLORS[c.bloomLevel] || 'badge-blue'}">${esc(c.bloomLevel)}</span></td>
+        <td>${c.measurable ? '<span class="badge badge-green">✓ Хэмжигдэнэ</span>' : '<span class="badge badge-red">✗ Хэмжигдэхгүй</span>'}</td>
+        <td class="cell-wrap">${esc(c.issues) || "—"}</td>
+        <td class="cell-wrap">${esc(c.improved) || "—"}</td>
+      </tr>`).join("") : `<tr><td colspan="6" style="text-align:center;color:var(--muted)">CLO олдсонгүй.</td></tr>`;
+
+    // Assessment matrix
+    const assessments = Array.isArray(matrix.assessments) ? matrix.assessments : [];
+    const cloIds = clos.map(c => c.id);
+    const weights = matrix.cloWeights || {};
+    const totals = matrix.totalWeightPerClo || {};
+    let matrixHtml = "";
+    if (assessments.length && cloIds.length) {
+      matrixHtml = `<thead><tr><th>CLO</th>${assessments.map(a => `<th>${esc(a)}</th>`).join("")}<th>Нийт жин</th></tr></thead><tbody>` +
+        cloIds.map(id => `<tr>
+          <td><strong>${esc(id)}</strong></td>
+          ${assessments.map(a => `<td>${weights[id]?.[a] != null ? weights[id][a] + "%" : "—"}</td>`).join("")}
+          <td><strong>${totals[id] != null ? totals[id] + "%" : "—"}</strong></td>
+        </tr>`).join("") + "</tbody>";
+    } else {
+      matrixHtml = `<tbody><tr><td style="text-align:center;color:var(--muted);padding:20px">Уялдааны мэдээлэл олдсонгүй.</td></tr></tbody>`;
+    }
+    document.getElementById("matrixTable").innerHTML = matrixHtml;
+
+    const unassessed = Array.isArray(matrix.unassessedClos) ? matrix.unassessedClos : [];
+    document.getElementById("matrixNotes").innerHTML =
+      (unassessed.length ? `<strong style="color:var(--red)">Үнэлгээгүй CLO:</strong> ${unassessed.map(esc).join(", ")}<br>` : "") +
+      esc(matrix.notes || "");
+
+    // Structure
+    document.getElementById("statCredits").textContent = structure.credits ?? "—";
+    document.getElementById("statHours").textContent = structure.declaredTotalHours ?? "—";
+    document.getElementById("statWeeks").textContent = structure.weeklyScheduleWeeks ?? "—";
+    const issues = Array.isArray(structure.issues) ? structure.issues : [];
+    document.getElementById("structureIssues").innerHTML = issues.length
+      ? issues.map(i => `<li>${esc(i)}</li>`).join("")
+      : `<li style="color:var(--green)">Илэрсэн зөрчил алга.</li>`;
+    document.getElementById("structureNotes").textContent = structure.notes || "";
+
+    // Rubric alignment
+    const rubricLabels = {
+      C1_1: "C1.1 — CLO-ийн тодорхой байдал",
+      C1_2: "C1.2 — CLO ба агуулгын нийцэл",
+      C1_3: "C1.3 — CLO ба сургалтын үйл ажиллагаа",
+      C1_4: "C1.4 — CLO ба үнэлгээний нийцэл"
+    };
+    document.getElementById("rubricAlignGrid").innerHTML = Object.keys(rubricLabels).map(k => {
+      const item = rubric[k] || {};
+      return `<div class="stat-card">
+        <div class="label">${rubricLabels[k]}</div>
+        <div class="value">${item.score ?? "—"}/3</div>
+        <div class="sub">${esc(item.comment || "")}</div>
+      </div>`;
+    }).join("");
+
+    document.getElementById("overallSummaryBox").textContent = result.overallSummary || "—";
+  }
+</script>
+</body>
+</html>

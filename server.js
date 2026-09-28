@@ -3,6 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import OpenAI from "openai";
 import { readFileSync } from "fs";
+import multer from "multer";
+import mammoth from "mammoth";
 
 dotenv.config();
 
@@ -10,6 +12,16 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "3mb" }));
 app.use(express.static("public"));
+
+const curriculumUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const isDocx = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      || file.originalname.toLowerCase().endsWith(".docx");
+    cb(isDocx ? null : new Error("Зөвхөн .docx файл оруулна уу."), isDocx);
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin1234";
@@ -404,6 +416,94 @@ I-CVI < 0.78 байгаа үзүүлэлт бүрт: яагаад эксперт
     console.error("[cvi-advice]", error);
     res.status(500).json({ ok: false, message: error.message });
   }
+});
+
+app.post("/api/analyze-curriculum", requireAdmin, (req, res) => {
+  curriculumUpload.single("file")(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({ ok: false, message: uploadErr.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ ok: false, message: "Файл оруулаагүй байна." });
+    }
+    try {
+      const { value: rawText } = await mammoth.extractRawText({ buffer: req.file.buffer });
+      const text = (rawText || "").trim();
+      if (!text) {
+        return res.status(400).json({ ok: false, message: "Файлаас текст уншиж чадсангүй." });
+      }
+      const truncated = text.length > 14000 ? text.slice(0, 14000) + "\n...(таслагдсан)" : text;
+
+      const prompt = `Та их дээд сургуулийн хичээлийн хөтөлбөр (syllabus) хянадаг мэргэжлийн шинжээч. Доорх хөтөлбөрийн бичвэрийг задлан шинжилж, ЗӨВХӨН доор заасан JSON бүтцээр хариул (өөр текст, тайлбар, markdown код блок бүү нэм).
+
+ХӨТӨЛБӨРИЙН БИЧВЭР:
+"""
+${truncated}
+"""
+
+Шинжилгээний зааврууд:
+
+1. "clos" — Хөтөлбөрөөс олдсон Сургалтын үр дүн (CLO) бүрийг ол. Тус бүрд нь: үйл үг (verb), Блумийн танин мэдэхүйн түвшин (Санах/Ойлгох/Хэрэглэх/Шинжлэх/Үнэлэх/Бүтээх), хэмжигдэх эсэх (measurable: true/false), асуудал (issues, богино тайлбар), сайжруулсан хувилбар (improved, CLO-г дахин томьёолсон, хэмжигдэхүйц үйл үгтэй өгүүлбэр) зэргийг гарга.
+
+2. "assessmentMatrix" — Хөтөлбөрт дурдсан үнэлгээний бүрэлдэхүүн хэсгүүд (шалгалт, даалгавар гэх мэт)-ийг CLO бүртэй уялдуулж, CLO тус бүрт ногдох нийт жин (%)-г тооц. Ямар нэг CLO-д огт үнэлгээ ногдоогүй бол "unassessedClos"-д жагсаа.
+
+3. "structure" — Кредитийн тоо, нийт цагийн ачаалал (лекц/семинар/бие даалт гэх мэт хуваарилалт хэлбэлзэлтэй бол дурдсанаар), долоо хоногийн хуваарийн бүтэц (нийт долоо хоног, сэдвийн тоо таарч байгаа эсэх) зэргийг шалгаж, зөрчил/дутагдал байвал "issues" жагсаалтад бич.
+
+4. "rubricAlignment" — "Онлайн сургалтыг үнэлэх рубрик"-ийн C1 шалгуур (Сургалтын зорилго, үр дүн, үнэлгээний уялдаа)-ын 4 үзүүлэлтэд энэ хөтөлбөрийг урьдчилан тааруулж 0-3 оноогоор (0=нотолгоо байхгүй, 1=хангалтгүй, 2=хангалттай, 3=маш сайн) урьдчилсан үнэлгээ, тайлбар өг:
+   - C1.1 (CLO-ийн тодорхой байдал)
+   - C1.2 (CLO ба агуулгын нийцэл)
+   - C1.3 (CLO ба сургалтын үйл ажиллагаа)
+   - C1.4 (CLO ба үнэлгээний нийцэл)
+
+5. "overallSummary" — Дээрхийг нэгтгэсэн 3-5 өгүүлбэрийн ерөнхий дүгнэлт, хамгийн чухал 3 засах зүйлийг нэрлэ.
+
+JSON бүтэц:
+{
+  "clos": [{ "id": string, "text": string, "verb": string, "bloomLevel": string, "measurable": boolean, "issues": string, "improved": string }],
+  "assessmentMatrix": {
+    "assessments": [string],
+    "cloWeights": { "<CLO id>": { "<assessment name>": number } },
+    "totalWeightPerClo": { "<CLO id>": number },
+    "unassessedClos": [string],
+    "notes": string
+  },
+  "structure": {
+    "credits": number|null,
+    "declaredTotalHours": number|null,
+    "weeklyScheduleWeeks": number|null,
+    "issues": [string],
+    "notes": string
+  },
+  "rubricAlignment": {
+    "C1_1": { "score": number, "comment": string },
+    "C1_2": { "score": number, "comment": string },
+    "C1_3": { "score": number, "comment": string },
+    "C1_4": { "score": number, "comment": string }
+  },
+  "overallSummary": string
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: prompt }]
+      });
+
+      const raw = (response.choices?.[0]?.message?.content || "").trim();
+      let result;
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        return res.status(502).json({ ok: false, message: "AI хариуг уншиж чадсангүй. Дахин оролдоно уу." });
+      }
+
+      res.json({ ok: true, fileName: req.file.originalname, result });
+    } catch (error) {
+      console.error("[analyze-curriculum]", error);
+      res.status(500).json({ ok: false, message: error.message });
+    }
+  });
 });
 
 app.listen(PORT, () => {
