@@ -490,6 +490,8 @@ JSON бүтэц:
         messages: [{ role: "user", content: prompt }]
       });
 
+      console.log("[analyze-curriculum] token usage:", response.usage);
+
       const raw = (response.choices?.[0]?.message?.content || "").trim();
       let result;
       try {
