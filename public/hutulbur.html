@@ -67,8 +67,21 @@
 
     .ai-box{background:#f4f7ff;border:1px solid #dbe5ff;border-radius:14px;padding:16px;font-size:14px;line-height:1.75;white-space:pre-line}
 
+    .tab-bar{display:flex;gap:24px;padding:0 20px;border-bottom:1px solid var(--line);overflow-x:auto}
+    .tab-btn{border:none;background:transparent;cursor:pointer;padding:16px 0;font-size:14px;font-weight:700;
+      color:var(--muted);white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit}
+    .tab-btn.active{color:var(--text);border-bottom-color:var(--text)}
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    .bloom-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:13px}
+    .bloom-label{width:170px;flex-shrink:0;color:var(--text)}
+    .bloom-track{flex:1;height:8px;background:#eef1f6;border-radius:999px;overflow:hidden}
+    .bloom-fill{height:100%;background:var(--primary);border-radius:999px}
+    .bloom-count{width:24px;text-align:right;font-weight:700;color:var(--text)}
+
     @media(max-width:900px){.stats{grid-template-columns:1fr 1fr}}
-    @media(max-width:600px){.stats{grid-template-columns:1fr}}
+    @media(max-width:600px){.stats{grid-template-columns:1fr};.bloom-label{width:120px}}
 
     /* LOGIN */
     .login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#2242bb 0%,#4d7cff 100%);display:flex;align-items:center;justify-content:center;z-index:999;}
@@ -122,90 +135,98 @@
   </div>
 
   <div id="resultsWrap" style="display:none">
-
-    <div class="stats">
-      <div class="stat-card">
-        <div class="label">CLO тоо</div>
-        <div class="value" id="statCloCount">—</div>
-        <div class="sub">хэмжигдэхүйц эсэх шалгасан</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Хэмжигдэхгүй CLO</div>
-        <div class="value" id="statUnmeasurable">—</div>
-        <div class="sub">сайжруулах шаардлагатай</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">Үнэлгээгүй CLO</div>
-        <div class="value" id="statUnassessed">—</div>
-        <div class="sub">уялдааны матрицаас</div>
-      </div>
-      <div class="stat-card">
-        <div class="label">C1 урьдчилсан оноо</div>
-        <div class="value" id="statC1">—</div>
-        <div class="sub">/12, рубрикийн С1 шалгуур</div>
-      </div>
-    </div>
-
     <div class="card">
-      <div class="card-head"><h2>🎯 CLO ба Bloom-ийн түвшин</h2></div>
-      <div class="card-body" style="padding:0">
-        <div style="overflow-x:auto">
-          <table>
-            <thead><tr>
-              <th>CLO</th><th>Үйл үг</th><th>Bloom түвшин</th><th>Хэмжигдэх эсэх</th><th>Асуудал</th><th>Сайжруулсан хувилбар</th>
-            </tr></thead>
-            <tbody id="cloTableBody"></tbody>
-          </table>
+      <div class="tab-bar" id="tabBar">
+        <button class="tab-btn active" data-tab="overview">Тойм</button>
+        <button class="tab-btn" data-tab="clo">CLO ба Bloom</button>
+        <button class="tab-btn" data-tab="matrix">Үнэлгээний уялдаа</button>
+        <button class="tab-btn" data-tab="structure">Бүтэц, кредит</button>
+        <button class="tab-btn" data-tab="rubric">ОСШ</button>
+      </div>
+
+      <div class="tab-panel active" id="tab-overview">
+        <div class="card-body">
+          <div class="stats">
+            <div class="stat-card">
+              <div class="label">CLO</div>
+              <div class="value" id="statCloCount">—</div>
+              <div class="sub" id="statCloSub">— үр дүн</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Үнэлгээний уялдаа</div>
+              <div class="value" id="statWeightSum">—</div>
+              <div class="sub" id="statWeightSub">нийлбэр —</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Бүтэц, кредит</div>
+              <div class="value" id="statCreditsOverview">—</div>
+              <div class="sub">кредит</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">ОСШ</div>
+              <div class="value" id="statC1">—</div>
+              <div class="sub">рубрикийн C1 шалгуур</div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:20px">
+            <h3 style="margin:0 0 14px;font-size:15px">Bloom-ын түвшний тархалт</h3>
+            <div id="bloomDist"></div>
+          </div>
+
+          <div class="ai-box" id="overallSummaryBox">—</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-clo">
+        <div class="card-body" style="padding:0">
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>CLO</th><th>Үйл үг</th><th>Bloom түвшин</th><th>Хэмжигдэх эсэх</th><th>Асуудал</th><th>Сайжруулсан хувилбар</th>
+              </tr></thead>
+              <tbody id="cloTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-matrix">
+        <div class="card-body">
+          <div style="overflow-x:auto">
+            <table id="matrixTable"></table>
+          </div>
+          <div id="matrixNotes" style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.7"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-structure">
+        <div class="card-body">
+          <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
+            <div class="stat-card">
+              <div class="label">Кредит</div>
+              <div class="value" id="statCredits">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Нийт цагийн ачаалал</div>
+              <div class="value" id="statHours">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Долоо хоногийн хуваарь</div>
+              <div class="value" id="statWeeks">—</div>
+            </div>
+          </div>
+          <ul class="issue-list" id="structureIssues"></ul>
+          <div id="structureNotes" style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.7"></div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-rubric">
+        <div class="card-body">
+          <div class="stats" style="grid-template-columns:repeat(4,1fr)" id="rubricAlignGrid"></div>
         </div>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-head"><h2>🧮 Үнэлгээ–CLO уялдааны матриц</h2></div>
-      <div class="card-body">
-        <div style="overflow-x:auto">
-          <table id="matrixTable"></table>
-        </div>
-        <div id="matrixNotes" style="font-size:13px;color:var(--muted);margin-top:12px;line-height:1.7"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><h2>🏗️ Бүтэц ба кредит</h2></div>
-      <div class="card-body">
-        <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
-          <div class="stat-card">
-            <div class="label">Кредит</div>
-            <div class="value" id="statCredits">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="label">Нийт цагийн ачаалал</div>
-            <div class="value" id="statHours">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="label">Долоо хоногийн хуваарь</div>
-            <div class="value" id="statWeeks">—</div>
-          </div>
-        </div>
-        <ul class="issue-list" id="structureIssues"></ul>
-        <div id="structureNotes" style="font-size:13px;color:var(--muted);margin-top:8px;line-height:1.7"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><h2>📐 Рубрикийн C1 шалгуурт урьдчилсан нийцэл</h2></div>
-      <div class="card-body">
-        <div class="stats" style="grid-template-columns:repeat(4,1fr)" id="rubricAlignGrid"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><h2>🤖 AI ЕРӨНХИЙ ДҮГНЭЛТ</h2></div>
-      <div class="card-body">
-        <div class="ai-box" id="overallSummaryBox">—</div>
-      </div>
-    </div>
-
   </div>
 
   <div class="empty" id="emptyState">Хөтөлбөрийн .docx файлаа оруулж "Шинжлэх" товч дарна уу.</div>
@@ -264,13 +285,38 @@
     statusLine.className = "status-line" + (isError ? " err" : "");
   }
 
+  const BLOOM_LEVELS = ["Санах", "Ойлгох", "Хэрэглэх", "Шинжлэх", "Үнэлэх", "Бүтээх"];
+  const BLOOM_ALIASES = {
+    "санах": "Санах", "мэдэх": "Санах",
+    "ойлгох": "Ойлгох",
+    "хэрэглэх": "Хэрэглэх",
+    "шинжлэх": "Шинжлэх", "задлан шинжлэх": "Шинжлэх", "шинжих": "Шинжлэх",
+    "үнэлэх": "Үнэлэх",
+    "бүтээх": "Бүтээх", "бүтээлч": "Бүтээх"
+  };
   const BLOOM_COLORS = {
     "Санах": "badge-blue", "Ойлгох": "badge-blue", "Хэрэглэх": "badge-green",
     "Шинжлэх": "badge-amber", "Үнэлэх": "badge-amber", "Бүтээх": "badge-green"
   };
 
+  function normalizeBloom(level) {
+    const key = String(level || "").trim().toLowerCase();
+    return BLOOM_ALIASES[key] || (BLOOM_LEVELS.includes(level) ? level : null);
+  }
+
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  }
+
+  // TABS
+  document.getElementById("tabBar").addEventListener("click", (e) => {
+    const btn = e.target.closest(".tab-btn");
+    if (!btn) return;
+    switchTab(btn.dataset.tab);
+  });
+  function switchTab(tab) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${tab}`));
   }
 
   analyzeBtn.addEventListener("click", async () => {
@@ -313,15 +359,47 @@
 
     document.getElementById("emptyState").style.display = "none";
     document.getElementById("resultsWrap").style.display = "block";
+    switchTab("overview");
 
-    // Stats
+    // Overview stats
     const unmeasurable = clos.filter(c => c.measurable === false).length;
-    const unassessedCount = Array.isArray(matrix.unassessedClos) ? matrix.unassessedClos.length : 0;
     const c1Total = ["C1_1","C1_2","C1_3","C1_4"].reduce((s, k) => s + Number(rubric[k]?.score || 0), 0);
     document.getElementById("statCloCount").textContent = clos.length;
-    document.getElementById("statUnmeasurable").textContent = unmeasurable;
-    document.getElementById("statUnassessed").textContent = unassessedCount;
+    document.getElementById("statCloSub").textContent = clos.length + " үр дүн" + (unmeasurable ? `, ${unmeasurable} хэмжигдэхгүй` : "");
+    document.getElementById("statCreditsOverview").textContent = structure.credits ?? "—";
     document.getElementById("statC1").textContent = c1Total + "/12";
+
+    const assessmentWeights = matrix.assessmentWeights || {};
+    const weightValues = Object.values(assessmentWeights).map(Number).filter(v => !Number.isNaN(v));
+    const weightSum = weightValues.reduce((s, v) => s + v, 0);
+    if (weightValues.length) {
+      document.getElementById("statWeightSum").textContent = weightSum + "%";
+      const diff = Math.abs(weightSum - 100);
+      document.getElementById("statWeightSub").innerHTML = diff <= 2
+        ? `<span style="color:var(--green)">✓ нийлбэр 100%-тай тэнцүү</span>`
+        : `<span style="color:var(--red)">⚠️ нийлбэр ${weightSum}% (100%-с ${diff > 0 ? "хэтэрсэн" : "дутуу"})</span>`;
+    } else {
+      document.getElementById("statWeightSum").textContent = "—";
+      document.getElementById("statWeightSub").textContent = "жингийн мэдээлэл олдсонгүй";
+    }
+
+    // Bloom distribution
+    const bloomCounts = Object.fromEntries(BLOOM_LEVELS.map(l => [l, 0]));
+    let undefinedCount = 0;
+    clos.forEach(c => {
+      const normalized = normalizeBloom(c.bloomLevel);
+      if (normalized) bloomCounts[normalized]++;
+      else undefinedCount++;
+    });
+    const maxCount = Math.max(1, ...Object.values(bloomCounts), undefinedCount);
+    const bloomRows = BLOOM_LEVELS.map((level, i) => ({ label: `${i + 1}. ${level}`, count: bloomCounts[level] }));
+    if (undefinedCount > 0) bloomRows.push({ label: "Тодорхойгүй", count: undefinedCount });
+    document.getElementById("bloomDist").innerHTML = bloomRows.map(r => `
+      <div class="bloom-row">
+        <div class="bloom-label">${esc(r.label)}</div>
+        <div class="bloom-track"><div class="bloom-fill" style="width:${(r.count / maxCount) * 100}%"></div></div>
+        <div class="bloom-count">${r.count}</div>
+      </div>`).join("");
 
     // CLO table
     document.getElementById("cloTableBody").innerHTML = clos.length ? clos.map(c => `
